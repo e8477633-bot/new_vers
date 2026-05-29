@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturer Dashboard - Mzuzu University</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:#f0f4f8;padding-bottom:40px}
+        .navbar{background:#0a2b3e;color:white;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+        .logo{font-size:1.3rem;font-weight:bold}
+        .logo span{color:#fdbb4d}
+        .user-info{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+        .badge{background:#fdbb4d;color:#0a2b3e;padding:6px 14px;border-radius:40px;font-size:12px;font-weight:bold}
+        .logout-btn{background:#dc2626;border:none;padding:8px 20px;border-radius:40px;color:white;cursor:pointer}
+        .container{max-width:1000px;margin:24px auto;padding:0 20px}
+        .create-post{background:white;border-radius:28px;padding:24px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+        .create-post h3{color:#0a2b3e;margin-bottom:15px}
+        .create-post input,.create-post textarea{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:14px;font-size:14px;margin-bottom:15px}
+        .create-post textarea{min-height:100px;resize:vertical}
+        .media-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+        .media-btn{background:#e2e8f0;border:none;padding:10px 18px;border-radius:40px;cursor:pointer;font-size:13px;font-weight:600}
+        .media-btn.voice{background:#8b5cf6;color:white}
+        .media-btn.video{background:#ef4444;color:white}
+        .media-btn.doc{background:#3b82f6;color:white}
+        .media-btn.image{background:#10b981;color:white}
+        .selected-media{background:#e0f2fe;padding:12px;border-radius:14px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+        .remove-media{background:#dc2626;color:white;border:none;padding:6px 14px;border-radius:40px;cursor:pointer;font-size:12px}
+        .submit-post{background:#0a2b3e;color:white;border:none;padding:12px 24px;border-radius:40px;cursor:pointer;font-weight:bold;font-size:14px}
+        .posts-container{background:white;border-radius:28px;padding:24px}
+        .posts-container h3{color:#0a2b3e;margin-bottom:20px}
+        .post-card{border:1px solid #e2e8f0;border-radius:20px;padding:20px;margin-bottom:20px;background:#fafcff}
+        .post-title{font-size:1.2rem;font-weight:bold;color:#1a4a6f;margin-bottom:8px}
+        .post-date{font-size:11px;color:#94a3b8;margin-bottom:12px}
+        .post-content{color:#334155;line-height:1.5;margin-bottom:12px}
+        .post-media{margin:12px 0;background:#f8fafc;padding:12px;border-radius:16px}
+        .post-media audio,.post-media video{max-width:100%;border-radius:12px}
+        .post-media img{max-width:100%;border-radius:12px}
+        .post-media a{color:#3b82f6;text-decoration:none}
+        .delete-post{background:#dc2626;color:white;border:none;padding:6px 16px;border-radius:40px;cursor:pointer;font-size:12px;margin-top:10px}
+        .empty-state{text-align:center;padding:40px;color:#94a3b8}
+        .file-input{display:none}
+        .contact{background:#fff3cd;border-radius:16px;padding:15px;margin-top:20px;font-size:11px;color:#856404;text-align:center}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🎓 Mzuzu University <span>Lecturer Portal</span></div>
+        <div class="user-info">
+            <span class="badge" id="programBadge">Loading...</span>
+            <span class="badge">Year <span id="levelBadge">-</span></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="create-post">
+            <h3>📝 Create Announcement</h3>
+            <input type="text" id="postTitle" placeholder="Title">
+            <textarea id="postContent" placeholder="Write your announcement..."></textarea>
+            
+            <div class="media-buttons">
+                <button class="media-btn voice" onclick="selectFile('voice')">🎙️ Voice Message</button>
+                <button class="media-btn video" onclick="selectFile('video')">🎥 Video</button>
+                <button class="media-btn doc" onclick="selectFile('doc')">📄 Document</button>
+                <button class="media-btn image" onclick="selectFile('image')">🖼️ Image</button>
+            </div>
+            
+            <input type="file" id="fileInput" class="file-input">
+            <div id="mediaPreview"></div>
+            
+            <button class="submit-post" onclick="createPost()">📢 Post Announcement</button>
+        </div>
+
+        <div class="posts-container">
+            <h3>📢 Your Announcements</h3>
+            <div id="postsList"><div class="empty-state">Loading announcements...</div></div>
+        </div>
+        
+        <div class="contact">
+            📞 <strong>For Queries:</strong> Emmanuel Chimombo 0891011842 | e8477633@gmail.com
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let selectedFile = null;
+        let selectedMediaType = null;
+        
+        try {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'lecturer') window.location.href = 'index.html';
+        } catch(e) { window.location.href = 'index.html'; }
+        
+        document.getElementById('programBadge').innerHTML = currentUser.programName || currentUser.programCode;
+        document.getElementById('levelBadge').innerHTML = currentUser.level;
+        
+        function selectFile(type) {
+            selectedMediaType = type;
+            const fileInput = document.getElementById('fileInput');
+            if (type === 'voice') fileInput.accept = 'audio/*';
+            else if (type === 'video') fileInput.accept = 'video/*';
+            else if (type === 'image') fileInput.accept = 'image/*';
+            else fileInput.accept = '.pdf,.doc,.docx,.txt';
+            
+            fileInput.onchange = function(e) {
+                if (e.target.files[0]) {
+                    selectedFile = e.target.files[0];
+                    document.getElementById('mediaPreview').innerHTML = `
+                        <div class="selected-media">
+                            <span>📎 ${type.toUpperCase()}: ${selectedFile.name} (${(selectedFile.size/1024).toFixed(1)} KB)</span>
+                            <button class="remove-media" onclick="clearMedia()">Remove</button>
+                        </div>
+                    `;
+                }
+            };
+            fileInput.click();
+        }
+        
+        function clearMedia() {
+            selectedFile = null;
+            selectedMediaType = null;
+            document.getElementById('mediaPreview').innerHTML = '';
+            document.getElementById('fileInput').value = '';
+        }
+        
+        async function loadPosts() {
+            try {
+                const res = await fetch(`/api/posts/${currentUser.programCode}/${currentUser.level}`);
+                const posts = await res.json();
+                const container = document.getElementById('postsList');
+                
+                if (!posts.length) {
+                    container.innerHTML = '<div class="empty-state">📭 No announcements yet.</div>';
+                    return;
+                }
+                
+                let html = '';
+                for (let i = 0; i < posts.length; i++) {
+                    const p = posts[i];
+                    let mediaHtml = '';
+                    if (p.media) {
+                        if (p.media.type === 'voice') mediaHtml = `<audio controls src="${p.media.url}"></audio>`;
+                        else if (p.media.type === 'video') mediaHtml = `<video controls src="${p.media.url}" width="100%"></video>`;
+                        else if (p.media.type === 'doc') mediaHtml = `<a href="${p.media.url}" target="_blank">📄 Download Document</a>`;
+                        else if (p.media.type === 'image') mediaHtml = `<img src="${p.media.url}" alt="Image">`;
+                    }
+                    html += `
+                        <div class="post-card">
+                            <div class="post-title">${escapeHtml(p.title)}</div>
+                            <div class="post-date">📅 ${p.date}</div>
+                            <div class="post-content">${escapeHtml(p.content)}</div>
+                            ${mediaHtml ? `<div class="post-media">${mediaHtml}</div>` : ''}
+                            <button class="delete-post" onclick="deletePost(${p.id})">🗑️ Delete</button>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            } catch(e) { console.error(e); }
+        }
+        
+        async function createPost() {
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            
+            if (!title || !content) {
+                alert('Please enter title and content');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('programCode', currentUser.programCode);
+            formData.append('level', currentUser.level);
+            formData.append('title', title);
+            formData.append('content', content);
+            formData.append('lecturerName', currentUser.name);
+            formData.append('mediaType', selectedMediaType || '');
+            if (selectedFile) formData.append('mediaFile', selectedFile);
+            
+            try {
+                const res = await fetch('/api/posts', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('postTitle').value = '';
+                    document.getElementById('postContent').value = '';
+                    clearMedia();
+                    loadPosts();
+                    alert('Announcement posted!');
+                } else {
+                    alert('Error posting');
+                }
+            } catch(e) { alert('Error posting'); }
+        }
+        
+        async function deletePost(id) {
+            if (confirm('Delete this announcement?')) {
+                await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+                loadPosts();
+            }
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => m == '&' ? '&amp;' : (m == '<' ? '&lt;' : '&gt;'));
+        }
+        
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        loadPosts();
+        setInterval(loadPosts, 10000);
+    </script>
+</body>
+</html>
