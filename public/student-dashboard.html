@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Mzuzu University</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:#f0f4f8;padding-bottom:40px}
+        .navbar{background:#0a2b3e;color:white;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+        .logo{font-size:1.3rem;font-weight:bold}
+        .logo span{color:#fdbb4d}
+        .user-info{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+        .badge{background:#10b981;color:white;padding:6px 14px;border-radius:40px;font-size:12px;font-weight:bold}
+        .logout-btn{background:#dc2626;border:none;padding:8px 20px;border-radius:40px;color:white;cursor:pointer}
+        .container{max-width:1200px;margin:24px auto;padding:0 20px}
+        
+        .live-alert{background:linear-gradient(135deg,#dc2626,#ef4444);color:white;padding:15px 20px;border-radius:28px;margin-bottom:20px;cursor:pointer;animation:pulse 1.5s infinite;text-align:center}
+        .live-alert h3{font-size:1.2rem;margin-bottom:5px}
+        .live-alert p{font-size:12px;opacity:0.9}
+        @keyframes pulse{0%{opacity:1}50%{opacity:0.8}100%{opacity:1}}
+        
+        .live-stream-container{background:white;border-radius:28px;padding:24px;margin-bottom:30px;border:3px solid #ef4444}
+        .live-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap}
+        .live-title{color:#dc2626;font-size:1.3rem}
+        .leave-live-btn{background:#dc2626;color:white;border:none;padding:10px 20px;border-radius:40px;cursor:pointer;font-weight:bold}
+        .video-container{background:#0a2b3e;border-radius:20px;padding:20px;text-align:center}
+        video{max-width:100%;border-radius:16px;background:#000}
+        
+        .rooms-section{background:white;border-radius:28px;padding:24px;margin-bottom:30px}
+        .rooms-header{margin-bottom:20px}
+        .rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+        .room-card{background:linear-gradient(135deg,#1a4a6f,#2c7da0);color:white;border-radius:20px;padding:20px;cursor:pointer;transition:transform 0.2s}
+        .room-card:hover{transform:translateY(-5px)}
+        .room-card h3{font-size:1.1rem;margin-bottom:8px}
+        .room-card p{font-size:12px;opacity:0.9}
+        .room-code{background:rgba(255,255,255,0.2);display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;margin-top:10px}
+        
+        .general-section{background:white;border-radius:28px;padding:24px;margin-bottom:30px}
+        .section-title{color:#0a2b3e;margin-bottom:15px}
+        
+        .posts-container{background:white;border-radius:28px;padding:24px;margin-top:20px}
+        .post-card{border:1px solid #e2e8f0;border-radius:20px;padding:20px;margin-bottom:20px}
+        .post-title{font-size:1.2rem;font-weight:bold;color:#1a4a6f}
+        .post-date{font-size:11px;color:#94a3b8;margin:8px 0}
+        .post-lecturer{color:#2c7da0;font-weight:600;margin-bottom:8px}
+        .post-media{margin:12px 0;background:#f8fafc;padding:12px;border-radius:16px}
+        .post-media audio,.post-media video{max-width:100%}
+        .post-media img{max-width:100%;border-radius:12px}
+        .empty-state{text-align:center;padding:40px;color:#94a3b8}
+        .back-btn{background:#64748b;color:white;border:none;padding:8px 16px;border-radius:40px;cursor:pointer;margin-bottom:15px}
+        .readonly-badge{background:#10b981;color:white;padding:4px 10px;border-radius:20px;font-size:10px;display:inline-block;margin-left:10px}
+        
+        .join-btn{background:#10b981;color:white;border:none;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:11px;margin-top:10px;width:100%}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🎓 Mzuzu University <span>Student Portal</span></div>
+        <div class="user-info">
+            <span class="badge" id="programBadge">Loading...</span>
+            <span class="badge">Year <span id="levelBadge">-</span></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Live Class Alert Area -->
+        <div id="liveAlertArea"></div>
+        
+        <!-- Live Stream Display Area -->
+        <div id="liveStreamArea" style="display:none"></div>
+
+        <div class="rooms-section">
+            <div class="rooms-header">
+                <h2>📚 My Course Rooms <span class="readonly-badge">Read Only</span></h2>
+            </div>
+            <div id="roomsList" class="rooms-grid">
+                <div class="empty-state">Loading course rooms...</div>
+            </div>
+        </div>
+
+        <div class="general-section">
+            <div class="section-title">
+                <h2>📢 General Announcements <span class="readonly-badge">Read Only</span></h2>
+            </div>
+            <div id="generalPostsArea"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRoom = null;
+        let peerConnection = null;
+        let activeStreamRoomId = null;
+        
+        // WebRTC Configuration
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+        
+        try {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'student') window.location.href = 'index.html';
+        } catch(e) { window.location.href = 'index.html'; }
+        
+        document.getElementById('programBadge').innerHTML = currentUser.programName;
+        document.getElementById('levelBadge').innerHTML = currentUser.level;
+        
+        async function checkActiveLiveSessions() {
+            try {
+                const res = await fetch(`/api/live/active/${currentUser.programCode}/${currentUser.level}`);
+                const sessions = await res.json();
+                const alertArea = document.getElementById('liveAlertArea');
+                
+                if (sessions.length > 0 && !activeStreamRoomId) {
+                    alertArea.innerHTML = sessions.map(session => `
+                        <div class="live-alert" onclick="joinLiveClass(${session.roomId}, '${session.roomName.replace(/'/g, "\\'")}')">
+                            <h3>🔴 LIVE CLASS IN PROGRESS!</h3>
+                            <p>📖 ${session.roomName} - Click here to join</p>
+                            <p>👨‍🏫 Lecturer: ${session.lecturerName}</p>
+                        </div>
+                    `).join('');
+                } else if (sessions.length === 0 && !activeStreamRoomId) {
+                    alertArea.innerHTML = '';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function joinLiveClass(roomId, roomName) {
+            activeStreamRoomId = roomId;
+            
+            // Create peer connection to receive video
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            // Create answer and set up connection
+            // For simplicity in this demo, we'll simulate receiving the stream
+            // In a full implementation, you would need a signaling server
+            
+            showLiveStreamUI(roomId, roomName);
+            
+            // Poll for stream availability (simplified)
+            alert(`Joining live class: ${roomName}. Please wait...`);
+        }
+        
+        function showLiveStreamUI(roomId, roomName) {
+            document.getElementById('liveStreamArea').innerHTML = `
+                <div class="live-stream-container">
+                    <div class="live-header">
+                        <h2 class="live-title">🔴 LIVE CLASS: ${roomName}</h2>
+                        <button class="leave-live-btn" onclick="leaveLiveClass()">🚪 Leave Class</button>
+                    </div>
+                    <div class="video-container">
+                        <video id="remoteVideo" autoplay playsinline style="width:100%;max-width:800px;border-radius:16px"></video>
+                        <p style="color:white;margin-top:10px">Waiting for lecturer to start streaming...</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('liveStreamArea').style.display = 'block';
+            
+            // Simulate receiving video (in production, this would be via WebRTC)
+            // For demo purposes, show a waiting message
+        }
+        
+        function leaveLiveClass() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            activeStreamRoomId = null;
+            document.getElementById('liveStreamArea').style.display = 'none';
+            document.getElementById('liveAlertArea').innerHTML = '';
+            alert('You have left the live class.');
+        }
+        
+        async function loadRooms() {
+            try {
+                const res = await fetch(`/api/rooms/${currentUser.programCode}/${currentUser.level}`);
+                const rooms = await res.json();
+                const container = document.getElementById('roomsList');
+                if (!rooms.length) {
+                    container.innerHTML = '<div class="empty-state">📭 No course rooms yet. Check back later!</div>';
+                    return;
+                }
+                container.innerHTML = rooms.map(room => `
+                    <div class="room-card">
+                        <h3>📖 ${room.courseName}</h3>
+                        <p><strong>${room.courseCode}</strong></p>
+                        <p>${room.description || 'No description'}</p>
+                        <div class="room-code">Lecturer: ${room.lecturerName}</div>
+                        <button class="join-btn" onclick="event.stopPropagation(); viewRoomPosts(${room.id}, '${room.courseName.replace(/'/g, "\\'")}', '${room.courseCode}')">📂 View Posts</button>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function viewRoomPosts(roomId, roomName, roomCode) {
+            currentRoom = { id: roomId, name: roomName, code: roomCode };
+            document.getElementById('generalPostsArea').innerHTML = `
+                <button class="back-btn" onclick="backToGeneral()">← Back to General Announcements</button>
+                <div class="posts-container">
+                    <h3>📢 Posts in ${roomName} (${roomCode}) <span class="readonly-badge">Read Only</span></h3>
+                    <div id="roomPostsList"><div class="empty-state">Loading posts...</div></div>
+                </div>
+            `;
+            await loadRoomPosts(roomId);
+        }
+        
+        async function loadRoomPosts(roomId) {
+            try {
+                const res = await fetch(`/api/posts/room/${roomId}`);
+                const posts = await res.json();
+                const container = document.getElementById('roomPostsList');
+                if (!posts.length) {
+                    container.innerHTML = '<div class="empty-state">📭 No posts in this room yet.</div>';
+                    return;
+                }
+                container.innerHTML = posts.map(p => renderPostCard(p)).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function loadGeneralPosts() {
+            try {
+                const res = await fetch(`/api/posts/general/${currentUser.programCode}/${currentUser.level}`);
+                const posts = await res.json();
+                const container = document.getElementById('generalPostsArea');
+                container.innerHTML = `
+                    <div class="posts-container">
+                        <h3>📢 General Announcements <span class="readonly-badge">Read Only</span></h3>
+                        <div id="generalPostsList">${posts.length ? posts.map(p => renderPostCard(p)).join('') : '<div class="empty-state">📭 No general announcements yet.</div>'}</div>
+                    </div>
+                `;
+            } catch(e) { console.error(e); }
+        }
+        
+        function renderPostCard(p) {
+            let mediaHtml = '';
+            if (p.media) {
+                if (p.media.type === 'voice') mediaHtml = `<audio controls src="${p.media.url}"></audio>`;
+                else if (p.media.type === 'video') mediaHtml = `<video controls src="${p.media.url}" width="100%"></video>`;
+                else if (p.media.type === 'doc') mediaHtml = `<a href="${p.media.url}" target="_blank">📄 Download Document</a>`;
+                else if (p.media.type === 'image') mediaHtml = `<img src="${p.media.url}" alt="Image">`;
+            }
+            return `
+                <div class="post-card">
+                    <div class="post-title">${escapeHtml(p.title)}</div>
+                    <div class="post-date">📅 ${p.date}</div>
+                    <div class="post-lecturer">👨‍🏫 By: ${escapeHtml(p.lecturerName)}</div>
+                    <div>${escapeHtml(p.content)}</div>
+                    ${mediaHtml ? `<div class="post-media">${mediaHtml}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        function backToGeneral() {
+            currentRoom = null;
+            loadGeneralPosts();
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => m == '&' ? '&amp;' : (m == '<' ? '&lt;' : '&gt;'));
+        }
+        
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        loadRooms();
+        loadGeneralPosts();
+        setInterval(checkActiveLiveSessions, 5000); // Check every 5 seconds
+    </script>
+</body>
+</html>
