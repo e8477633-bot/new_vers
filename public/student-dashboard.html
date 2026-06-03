@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Student Dashboard - Mzuzu University</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f0f4f8;
+            padding-bottom: 40px;
+        }
+        .navbar {
+            background: #0a2b3e;
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        .logo span {
+            color: #fdbb4d;
+        }
+        .user-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #10b981;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .logout-btn {
+            background: #dc2626;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 24px auto;
+            padding: 0 20px;
+        }
+        
+        /* Live Alert */
+        .live-alert {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 28px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        
+        /* Live Stream Container */
+        .live-stream-container {
+            background: white;
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 3px solid #ef4444;
+        }
+        .live-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .live-title {
+            color: #dc2626;
+            font-size: 1.3rem;
+        }
+        .leave-live-btn {
+            background: #64748b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .video-container {
+            background: #0a2b3e;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+        video {
+            max-width: 100%;
+            border-radius: 16px;
+            background: #000;
+            max-height: 400px;
+        }
+        
+        /* Rooms Grid */
+        .rooms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .room-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .room-card:hover {
+            transform: translateY(-4px);
+        }
+        .room-header {
+            background: linear-gradient(135deg, #1a4a6f, #2c7da0);
+            color: white;
+            padding: 20px;
+        }
+        .room-header h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+        .room-code {
+            background: rgba(255, 255, 255, 0.2);
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        .room-body {
+            padding: 20px;
+        }
+        .room-description {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .enter-btn {
+            background: #1a4a6f;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        /* Room Detail */
+        .back-btn {
+            background: #64748b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .room-detail {
+            background: white;
+            border-radius: 28px;
+            overflow: hidden;
+        }
+        .room-detail-header {
+            background: linear-gradient(135deg, #1a4a6f, #2c7da0);
+            color: white;
+            padding: 30px;
+        }
+        .room-detail-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+        .room-detail-nav {
+            display: flex;
+            gap: 4px;
+            background: #f1f5f9;
+            padding: 0 20px;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-weight: 600;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        .nav-tab.active {
+            color: #1a4a6f;
+            border-bottom: 3px solid #1a4a6f;
+        }
+        .tab-content {
+            padding: 30px;
+        }
+        
+        /* Cards */
+        .announcement-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1a4a6f;
+        }
+        .announcement-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .announcement-meta {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+        .material-card {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .material-icon {
+            font-size: 1.8rem;
+        }
+        .material-info {
+            flex: 1;
+        }
+        .material-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .assignment-card {
+            background: #fef3c7;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .assignment-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .assignment-due {
+            font-size: 11px;
+            color: #d97706;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #94a3b8;
+        }
+        .readonly-badge {
+            background: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            margin-left: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .rooms-grid { grid-template-columns: 1fr; }
+            .room-detail-nav { overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🎓 Mzuzu University <span>Student Portal</span></div>
+        <div class="user-info">
+            <span class="badge" id="programBadge">Loading...</span>
+            <span class="badge">Year <span id="levelBadge">-</span></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="liveAlertArea"></div>
+        <div id="liveStreamArea" style="display:none"></div>
+        
+        <div id="roomsView">
+            <h2>📚 My Course Rooms</h2>
+            <div id="roomsList" class="rooms-grid"><div class="empty-state">Loading course rooms...</div></div>
+        </div>
+        
+        <div id="roomDetailView" style="display:none"></div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRoom = null;
+        let currentTab = 'announcements';
+        let ws = null;
+        let peerConnection = null;
+        let activeStreamRoomId = null;
+        
+        try {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'student') window.location.href = 'index.html';
+        } catch(e) { window.location.href = 'index.html'; }
+        
+        document.getElementById('programBadge').innerHTML = currentUser.programName || currentUser.programCode;
+        document.getElementById('levelBadge').innerHTML = currentUser.level;
+        
+        async function checkLiveSessions() {
+            try {
+                const res = await fetch(`/api/live/active/${currentUser.programCode}/${currentUser.level}`);
+                const sessions = await res.json();
+                if (sessions.length > 0 && !activeStreamRoomId) {
+                    document.getElementById('liveAlertArea').innerHTML = sessions.map(s => `
+                        <div class="live-alert" onclick="joinLiveClass(${s.roomId}, '${(s.roomName || '').replace(/'/g, "\\'")}')">
+                            <h3>🔴 LIVE CLASS IN PROGRESS!</h3>
+                            <p>📖 ${s.roomName} - Click here to join</p>
+                            <p>👨‍🏫 Lecturer: ${s.lecturerName}</p>
+                        </div>
+                    `).join('');
+                } else if (sessions.length === 0 && !activeStreamRoomId) {
+                    document.getElementById('liveAlertArea').innerHTML = '';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function joinLiveClass(roomId, roomName) {
+            activeStreamRoomId = roomId;
+            
+            // Create WebSocket connection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+            
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: 'student-join', roomId }));
+            };
+            
+            ws.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'ready') {
+                    // Create peer connection
+                    peerConnection = new RTCPeerConnection({
+                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    });
+                    
+                    peerConnection.ontrack = (event) => {
+                        const videoEl = document.getElementById('remoteVideo');
+                        if (videoEl && event.streams[0]) {
+                            videoEl.srcObject = event.streams[0];
+                            document.getElementById('liveStatus').innerHTML = '✅ Connected - Live stream in progress';
+                        }
+                    };
+                    
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            ws.send(JSON.stringify({
+                                type: 'ice-candidate',
+                                candidate: event.candidate,
+                                roomId,
+                                target: 'lecturer'
+                            }));
+                        }
+                    };
+                    
+                    // Create and send offer
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    ws.send(JSON.stringify({ type: 'offer', offer, roomId, targetId: 'lecturer' }));
+                }
+                
+                if (data.type === 'answer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+                
+                if (data.type === 'ice-candidate') {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                }
+                
+                if (data.type === 'broadcast-ended') {
+                    leaveLiveClass();
+                    alert('The live class has ended.');
+                }
+            };
+            
+            showLiveStreamUI(roomId, roomName);
+        }
+        
+        function showLiveStreamUI(roomId, roomName) {
+            document.getElementById('liveStreamArea').innerHTML = `
+                <div class="live-stream-container">
+                    <div class="live-header">
+                        <h2 class="live-title">🔴 LIVE CLASS: ${roomName}</h2>
+                        <button class="leave-live-btn" onclick="leaveLiveClass()">🚪 Leave Class</button>
+                    </div>
+                    <div class="video-container">
+                        <video id="remoteVideo" autoplay playsinline style="width:100%;border-radius:16px"></video>
+                        <p id="liveStatus" style="color:white;margin-top:10px">🟡 Connecting to live stream...</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('liveStreamArea').style.display = 'block';
+        }
+        
+        function leaveLiveClass() {
+            if (peerConnection) peerConnection.close();
+            if (ws) ws.close();
+            activeStreamRoomId = null;
+            document.getElementById('liveStreamArea').style.display = 'none';
+            checkLiveSessions();
+        }
+        
+        async function loadRooms() {
+            try {
+                const res = await fetch(`/api/rooms/${currentUser.programCode}/${currentUser.level}`);
+                const rooms = await res.json();
+                const container = document.getElementById('roomsList');
+                if (!rooms.length) {
+                    container.innerHTML = '<div class="empty-state">📭 No course rooms available yet.</div>';
+                    return;
+                }
+                container.innerHTML = rooms.map(room => `
+                    <div class="room-card" onclick="openRoom(${room.id})">
+                        <div class="room-header">
+                            <h3>📖 ${room.courseName || 'Untitled Course'}</h3>
+                            <span class="room-code">${room.courseCode}</span>
+                        </div>
+                        <div class="room-body">
+                            <div class="room-description">${room.description || 'No description'}</div>
+                            <button class="enter-btn">Enter Room →</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function openRoom(roomId) {
+            const res = await fetch(`/api/rooms/detail/${roomId}`);
+            currentRoom = await res.json();
+            document.getElementById('roomsView').style.display = 'none';
+            document.getElementById('roomDetailView').style.display = 'block';
+            renderRoomDetail();
+        }
+        
+        function renderRoomDetail() {
+            document.getElementById('roomDetailView').innerHTML = `
+                <button class="back-btn" onclick="closeRoom()">← Back to All Rooms</button>
+                <div class="room-detail">
+                    <div class="room-detail-header">
+                        <h1>${currentRoom.courseName || 'Untitled Course'}</h1>
+                        <div class="course-code">${currentRoom.courseCode}</div>
+                        <div style="margin-top:15px">👨‍🏫 Lecturer: ${currentRoom.lecturerName}</div>
+                    </div>
+                    <div class="room-detail-nav">
+                        <button class="nav-tab active" onclick="switchTab('announcements', this)">📢 Announcements</button>
+                        <button class="nav-tab" onclick="switchTab('materials', this)">📁 Course Materials</button>
+                        <button class="nav-tab" onclick="switchTab('assignments', this)">📝 Assignments</button>
+                        <button class="nav-tab" onclick="switchTab('info', this)">ℹ️ Course Info</button>
+                    </div>
+                    <div class="tab-content" id="tabContent"></div>
+                </div>
+            `;
+            switchTab('announcements');
+        }
+        
+        async function switchTab(tab, el) {
+            currentTab = tab;
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            if (el) el.classList.add('active');
+            
+            const contentDiv = document.getElementById('tabContent');
+            
+            if (tab === 'announcements') {
+                const announcements = currentRoom.announcements || [];
+                contentDiv.innerHTML = announcements.length ? announcements.map(a => `
+                    <div class="announcement-card">
+                        <div class="announcement-title">📢 ${escapeHtml(a.title)}</div>
+                        <div class="announcement-meta">${a.author} • ${a.createdAt}</div>
+                        <div>${escapeHtml(a.content)}</div>
+                    </div>
+                `).join('') : '<div class="empty-state">No announcements yet.</div>';
+            } else if (tab === 'materials') {
+                const materials = currentRoom.materials || [];
+                contentDiv.innerHTML = materials.length ? materials.map(m => `
+                    <div class="material-card">
+                        <div class="material-icon">${m.type === 'video' ? '🎥' : (m.type === 'audio' ? '🎵' : (m.type === 'link' ? '🔗' : '📄'))}</div>
+                        <div class="material-info">
+                            <div class="material-title">${escapeHtml(m.title)}</div>
+                            <div class="material-meta">${m.description || ''}</div>
+                            ${m.url ? `<a href="${m.url}" target="_blank" style="color:#3b82f6;font-size:12px">Open →</a>` : ''}
+                        </div>
+                    </div>
+                `).join('') : '<div class="empty-state">No course materials yet.</div>';
+            } else if (tab === 'assignments') {
+                const assignments = currentRoom.assignments || [];
+                contentDiv.innerHTML = assignments.length ? assignments.map(a => `
+                    <div class="assignment-card">
+                        <div class="assignment-title">📝 ${escapeHtml(a.title)}</div>
+                        <div class="assignment-due">Due: ${a.dueDate || 'No due date'} | Points: ${a.totalPoints || 'N/A'}</div>
+                        <div>${escapeHtml(a.description || '')}</div>
+                        ${a.attachment ? `<a href="${a.attachment.url}" target="_blank" style="color:#3b82f6;font-size:12px">📎 Download Attachment</a>` : ''}
+                    </div>
+                `).join('') : '<div class="empty-state">No assignments yet.</div>';
+            } else if (tab === 'info') {
+                contentDiv.innerHTML = `
+                    <div style="background:#f8fafc;border-radius:20px;padding:24px">
+                        <h3>📖 Course Description</h3>
+                        <p style="margin:15px 0">${currentRoom.description || 'No description provided.'}</p>
+                        <h3>🎯 Learning Objectives</h3>
+                        <p style="margin:15px 0">${currentRoom.objectives || 'No objectives set.'}</p>
+                        <h3>📚 Syllabus</h3>
+                        ${currentRoom.syllabus ? `<a href="${currentRoom.syllabus.url}" target="_blank" style="color:#3b82f6">📄 Download Syllabus</a>` : '<p>No syllabus uploaded yet.</p>'}
+                    </div>
+                `;
+            }
+        }
+        
+        function closeRoom() {
+            currentRoom = null;
+            document.getElementById('roomsView').style.display = 'block';
+            document.getElementById('roomDetailView').style.display = 'none';
+            loadRooms();
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => m == '&' ? '&amp;' : (m == '<' ? '&lt;' : '&gt;'));
+        }
+        
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        loadRooms();
+        setInterval(checkLiveSessions, 5000);
+    </script>
+</body>
+</html>
