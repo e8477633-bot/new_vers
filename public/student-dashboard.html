@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Mzuzu University</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+        body{background:#f0f4f8;padding:20px}
+        .navbar{background:#0a2b3e;color:white;padding:15px 20px;border-radius:20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+        .btn{background:#1a4a6f;color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer}
+        .btn-danger{background:#dc2626}
+        .card{background:white;border-radius:20px;padding:20px;margin-bottom:20px}
+        .post-card{background:#f8fafc;padding:15px;border-radius:15px;margin-bottom:15px}
+        .live-alert{background:linear-gradient(135deg,#dc2626,#ef4444);color:white;padding:20px;border-radius:20px;margin-bottom:20px;cursor:pointer;animation:pulse 1.5s infinite;text-align:center}
+        .live-container{background:white;border-radius:20px;padding:20px;margin-bottom:20px;border:3px solid #ef4444}
+        video{max-width:100%;border-radius:10px;background:#000}
+        @keyframes pulse{0%{opacity:1}50%{opacity:0.8}100%{opacity:1}}
+        .readonly-badge{background:#10b981;color:white;padding:3px 8px;border-radius:10px;font-size:10px;margin-left:10px}
+        @media (max-width:600px){.navbar{flex-direction:column;gap:10px}}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div style="font-weight:bold">🎓 Mzuzu University - Student Portal</div>
+        <div>
+            <span id="programBadge"></span> | Year <span id="levelBadge"></span>
+            <button class="btn btn-danger" onclick="logout()" style="margin-left:15px;padding:5px 15px">Logout</button>
+        </div>
+    </div>
+
+    <div id="liveAlert" style="display:none">
+        <div class="live-alert" onclick="joinLiveClass()">
+            <h3>🔴 LIVE CLASS IN PROGRESS!</h3>
+            <p>Click here to join the live class</p>
+        </div>
+    </div>
+
+    <div id="liveStreamArea" style="display:none">
+        <div class="live-container">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap">
+                <h2 style="color:#dc2626">🔴 LIVE CLASS</h2>
+                <button class="btn btn-danger" onclick="leaveLiveClass()">Leave Class</button>
+            </div>
+            <video id="remoteVideo" autoplay playsinline style="width:100%"></video>
+            <p id="liveStatus" style="text-align:center;margin-top:15px">Connecting to live stream...</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📢 Announcements <span class="readonly-badge">Read Only</span></h3>
+        <div id="announcementsList">Loading...</div>
+    </div>
+
+    <div class="card">
+        <h3>📁 Course Materials <span class="readonly-badge">Read Only</span></h3>
+        <div id="materialsList">Loading...</div>
+    </div>
+
+    <div class="card">
+        <h3>📝 Assignments <span class="readonly-badge">Read Only</span></h3>
+        <div id="assignmentsList">Loading...</div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let ws = null;
+        let peerConnection = null;
+        
+        // Same TURN/STUN configuration as lecturer
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ]
+        };
+        
+        try {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'student') window.location.href = 'index.html';
+        } catch(e) { window.location.href = 'index.html'; }
+        
+        document.getElementById('programBadge').innerHTML = currentUser.programName || currentUser.programCode;
+        document.getElementById('levelBadge').innerHTML = currentUser.level;
+        
+        async function checkLiveClass() {
+            try {
+                const res = await fetch('/api/live/status');
+                const data = await res.json();
+                if (data.active) {
+                    document.getElementById('liveAlert').style.display = 'block';
+                } else {
+                    document.getElementById('liveAlert').style.display = 'none';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function joinLiveClass() {
+            document.getElementById('liveAlert').style.display = 'none';
+            document.getElementById('liveStreamArea').style.display = 'block';
+            document.getElementById('liveStatus').innerHTML = 'Connecting to live stream...';
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                ws.send(JSON.stringify({ type: 'student-ready' }));
+            };
+            
+            ws.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data.type);
+                
+                if (data.type === 'lecturer-ready') {
+                    peerConnection = new RTCPeerConnection(configuration);
+                    
+                    peerConnection.ontrack = (event) => {
+                        console.log('Received track');
+                        const videoEl = document.getElementById('remoteVideo');
+                        if (videoEl && event.streams[0]) {
+                            videoEl.srcObject = event.streams[0];
+                            document.getElementById('liveStatus').innerHTML = '✅ Connected - Watching live stream';
+                        }
+                    };
+                    
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            ws.send(JSON.stringify({
+                                type: 'ice-candidate',
+                                candidate: event.candidate,
+                                target: 'lecturer'
+                            }));
+                        }
+                    };
+                    
+                    peerConnection.oniceconnectionstatechange = () => {
+                        console.log('ICE connection state:', peerConnection.iceConnectionState);
+                        if (peerConnection.iceConnectionState === 'connected') {
+                            document.getElementById('liveStatus').innerHTML = '✅ Connected - Live stream active';
+                        } else if (peerConnection.iceConnectionState === 'failed') {
+                            document.getElementById('liveStatus').innerHTML = '❌ Connection failed. Please refresh.';
+                        }
+                    };
+                    
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    ws.send(JSON.stringify({ type: 'offer', offer: offer }));
+                }
+                
+                if (data.type === 'answer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+                
+                if (data.type === 'ice-candidate') {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                }
+                
+                if (data.type === 'broadcast-ended') {
+                    leaveLiveClass();
+                    alert('The live class has ended.');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('liveStatus').innerHTML = '❌ Connection failed. Please try again.';
+            };
+        }
+        
+        function leaveLiveClass() {
+            if (peerConnection) peerConnection.close();
+            if (ws) ws.close();
+            const videoEl = document.getElementById('remoteVideo');
+            if (videoEl) videoEl.srcObject = null;
+            document.getElementById('liveStreamArea').style.display = 'none';
+            checkLiveClass();
+        }
+        
+        async function loadContent() {
+            await loadAnnouncements();
+            await loadMaterials();
+            await loadAssignments();
+        }
+        
+        async function loadAnnouncements() {
+            try {
+                const res = await fetch(`/api/posts/general/${currentUser.programCode}/${currentUser.level}`);
+                const posts = await res.json();
+                const textPosts = posts.filter(p => !p.media);
+                const container = document.getElementById('announcementsList');
+                if (!textPosts.length) { container.innerHTML = '<p>No announcements yet.</p>'; return; }
+                container.innerHTML = textPosts.map(p => `
+                    <div class="post-card">
+                        <strong>📢 ${escapeHtml(p.title)}</strong><br>
+                        <small>${escapeHtml(p.lecturerName)} • ${p.date}</small>
+                        <p>${escapeHtml(p.content)}</p>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function loadMaterials() {
+            try {
+                const res = await fetch(`/api/posts/general/${currentUser.programCode}/${currentUser.level}`);
+                const posts = await res.json();
+                const materials = posts.filter(p => p.media && !p.dueDate);
+                const container = document.getElementById('materialsList');
+                if (!materials.length) { container.innerHTML = '<p>No materials yet.</p>'; return; }
+                container.innerHTML = materials.map(m => `
+                    <div class="post-card">
+                        <strong>📁 ${escapeHtml(m.title)}</strong>
+                        <p>${escapeHtml(m.content)}</p>
+                        ${renderMedia(m.media)}
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function loadAssignments() {
+            try {
+                const res = await fetch(`/api/posts/general/${currentUser.programCode}/${currentUser.level}`);
+                const posts = await res.json();
+                const assignments = posts.filter(p => p.dueDate);
+                const container = document.getElementById('assignmentsList');
+                if (!assignments.length) { container.innerHTML = '<p>No assignments yet.</p>'; return; }
+                container.innerHTML = assignments.map(a => `
+                    <div class="post-card">
+                        <strong>📝 ${escapeHtml(a.title)}</strong><br>
+                        <small>Due: ${a.dueDate || 'No due date'} | Points: ${a.points || 'N/A'}</small>
+                        <p>${escapeHtml(a.content)}</p>
+                        ${a.media ? renderMedia(a.media) : ''}
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        function renderMedia(media) {
+            if (!media) return '';
+            if (media.type === 'audio') return `<audio controls src="${media.url}"></audio>`;
+            if (media.type === 'video') return `<video controls src="${media.url}" width="100%"></video>`;
+            if (media.type === 'image') return `<img src="${media.url}" style="max-width:100%;border-radius:10px">`;
+            return `<a href="${media.url}" target="_blank">📄 Download Document</a>`;
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => m == '&' ? '&amp;' : (m == '<' ? '&lt;' : '&gt;'));
+        }
+        
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        loadContent();
+        setInterval(loadContent, 10000);
+        setInterval(checkLiveClass, 3000);
+    </script>
+</body>
+</html>
