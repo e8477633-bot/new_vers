@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturer Dashboard - Mzuzu University</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,system-ui}
+        body{background:#f0f4f8;padding:20px}
+        .navbar{background:#0a2b3e;color:white;padding:15px 25px;border-radius:20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px}
+        .logo{font-size:1.4rem;font-weight:bold}
+        .logo span{color:#fdbb4d}
+        .user-info{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+        .badge{background:#fdbb4d;color:#0a2b3e;padding:5px 12px;border-radius:30px;font-size:12px;font-weight:bold}
+        .btn{background:#1a4a6f;color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:bold;transition:0.2s}
+        .btn:hover{opacity:0.9;transform:translateY(-1px)}
+        .btn-danger{background:#dc2626}
+        .btn-success{background:#10b981}
+        .btn-warning{background:#f59e0b;color:#0a2b3e}
+        .card{background:white;border-radius:20px;padding:25px;margin-bottom:25px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+        .card h3{margin-bottom:15px;color:#0a2b3e;border-left:4px solid #fdbb4d;padding-left:12px}
+        input,textarea,select{width:100%;padding:12px;margin:10px 0;border-radius:10px;border:1px solid #ddd;font-size:14px}
+        input:focus,textarea:focus,select:focus{outline:none;border-color:#1a4a6f}
+        .post-card{background:#f8fafc;border-radius:15px;padding:20px;margin-bottom:15px;border-left:4px solid #1a4a6f}
+        .post-title{font-size:1.1rem;font-weight:bold;color:#0a2b3e;margin-bottom:8px}
+        .post-meta{font-size:11px;color:#94a3b8;margin-bottom:10px}
+        .post-content{color:#334155;margin-bottom:10px;line-height:1.5}
+        .post-media{margin:10px 0;background:#e2e8f0;padding:10px;border-radius:10px}
+        .post-media audio,.post-media video{max-width:100%;border-radius:8px}
+        .post-media img{max-width:100%;border-radius:8px}
+        .live-container{background:white;border-radius:20px;padding:25px;margin-bottom:25px;border:3px solid #ef4444}
+        .live-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:15px}
+        .live-title{color:#dc2626;font-size:1.3rem}
+        .live-info{background:#e0f2fe;padding:10px;border-radius:10px;margin:10px 0;word-break:break-all}
+        .two-columns{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+        @media (max-width:768px){.two-columns{grid-template-columns:1fr}}
+        .suggestion-card{background:#fef3c7;border-radius:12px;padding:15px;margin-bottom:12px;border-left:4px solid #f59e0b}
+        .suggestion-badge{background:#f59e0b;color:#0a2b3e;padding:2px 10px;border-radius:20px;font-size:10px;display:inline-block;margin-bottom:8px}
+        .performance-card{background:white;border-radius:15px;padding:20px;margin-bottom:20px;border:1px solid #e2e8f0}
+        .performance-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:15px 0}
+        .stat-box{background:#f8fafc;padding:15px;border-radius:12px;text-align:center}
+        .stat-value{font-size:1.5rem;font-weight:bold;color:#1a4a6f}
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
+        .modal-content{background:white;padding:30px;border-radius:20px;width:90%;max-width:600px;max-height:80vh;overflow-y:auto}
+        .posts-list{max-height:500px;overflow-y:auto}
+        .announcement-format{display:flex;gap:10px;margin:10px 0}
+        .format-btn{flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f8fafc;cursor:pointer;text-align:center}
+        .format-btn.selected{background:#1a4a6f;color:white;border-color:#1a4a6f}
+        .file-list{background:#f8fafc;padding:10px;border-radius:10px;margin:10px 0;max-height:150px;overflow-y:auto}
+        .file-item{display:flex;justify-content:space-between;align-items:center;padding:5px;border-bottom:1px solid #e2e8f0}
+        canvas{max-width:100%;height:300px}
+        .format-standard{border-left-color:#1a4a6f}
+        .format-important{border-left-color:#dc2626;background:#fef2f2}
+        .format-deadline{border-left-color:#f59e0b;background:#fffbeb}
+        .format-celebration{border-left-color:#10b981;background:#f0fdf4}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🎓 Mzuzu University <span>Lecturer Portal</span></div>
+        <div class="user-info">
+            <span class="badge" id="programBadge">Loading...</span>
+            <span class="badge">Year <span id="levelBadge">-</span></span>
+            <button class="btn-danger" onclick="logout()" style="padding:8px 18px">Logout</button>
+        </div>
+    </div>
+
+    <!-- Live Class Section -->
+    <div id="liveSection" class="live-container" style="display:none">
+        <div class="live-header">
+            <h2 class="live-title">🔴 LIVE CLASS: <span id="liveCourseName"></span></h2>
+            <button class="btn-danger" onclick="stopLiveClass()">Stop Live Class</button>
+        </div>
+        <div class="live-info">
+            <strong>📡 Stream URL:</strong><br>
+            <span id="liveStreamUrl"></span><br>
+            <button class="btn" onclick="copyStreamUrl()" style="margin-top:10px;padding:5px 15px">📋 Copy URL</button>
+        </div>
+        <p style="text-align:center;margin-top:15px;color:#ef4444;font-weight:bold">🔴 LIVE - Students can join now</p>
+    </div>
+
+    <!-- Start Live Class -->
+    <div class="card">
+        <h3>📹 Start Live Class</h3>
+        <input type="text" id="liveCourseNameInput" placeholder="Course Name">
+        <input type="text" id="lecturerNameInput" placeholder="Your Name" value="Prof. Emmanuel">
+        <input type="text" id="streamUrlInput" placeholder="Stream URL (YouTube, Zoom, Google Meet, etc.)">
+        <button class="btn-success" onclick="startLiveClass()">Start Live Class</button>
+    </div>
+
+    <div class="two-columns">
+        <!-- LEFT COLUMN -->
+        <div>
+            <!-- Post Announcement with Formats -->
+            <div class="card">
+                <h3>📝 Post Announcement</h3>
+                <div class="announcement-format">
+                    <div class="format-btn" data-format="standard" onclick="selectFormat('standard')">📄 Standard</div>
+                    <div class="format-btn" data-format="important" onclick="selectFormat('important')">⚠️ Important</div>
+                    <div class="format-btn" data-format="deadline" onclick="selectFormat('deadline')">⏰ Deadline</div>
+                    <div class="format-btn" data-format="celebration" onclick="selectFormat('celebration')">🎉 Celebration</div>
+                </div>
+                <input type="text" id="announcementTitle" placeholder="Title">
+                <textarea id="announcementContent" placeholder="Announcement content..." rows="3"></textarea>
+                <input type="file" id="announcementFile">
+                <button class="btn-success" onclick="postAnnouncement()">Post Announcement</button>
+            </div>
+
+            <!-- Bulk Upload Course Materials -->
+            <div class="card">
+                <h3>📤 Bulk Upload Course Materials</h3>
+                <input type="text" id="materialCourseName" placeholder="Course Name (optional)">
+                <input type="text" id="materialTitle" placeholder="Material Title / Folder Name">
+                <textarea id="materialDesc" placeholder="Description" rows="2"></textarea>
+                <select id="materialType">
+                    <option value="document">📄 Document</option>
+                    <option value="video">🎥 Video</option>
+                    <option value="audio">🎵 Audio</option>
+                    <option value="image">🖼️ Image</option>
+                </select>
+                <input type="file" id="materialFiles" multiple accept="*/*">
+                <div id="fileList" class="file-list" style="display:none"></div>
+                <button class="btn-success" onclick="uploadMultipleMaterials()">Upload Selected Files</button>
+            </div>
+
+            <!-- Create Assignment -->
+            <div class="card">
+                <h3>📝 Create Assignment</h3>
+                <input type="text" id="assignmentTitle" placeholder="Assignment Title">
+                <textarea id="assignmentDesc" placeholder="Instructions" rows="3"></textarea>
+                <input type="date" id="assignmentDueDate">
+                <input type="number" id="assignmentPoints" placeholder="Total Points">
+                <input type="file" id="assignmentFile">
+                <button class="btn-success" onclick="createAssignment()">Create Assignment</button>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div>
+            <!-- Expose Course Performance -->
+            <div class="card">
+                <h3>📊 Expose Course Performance</h3>
+                <input type="text" id="perfCourseName" placeholder="Course Name">
+                <input type="number" id="highestMark" placeholder="Highest Mark (%)">
+                <input type="number" id="lowestMark" placeholder="Lowest Mark (%)">
+                <input type="number" id="markGap" placeholder="Gap between highest and rest (%)">
+                <input type="text" id="majorityRange" placeholder="Mark range where many students are (e.g., 60-70%)">
+                <textarea id="lecturerStatement" placeholder="Lecturer's statement about performance..." rows="3"></textarea>
+                <input type="file" id="performanceImage" accept="image/*">
+                <button class="btn-success" onclick="exposePerformance()">Expose Performance</button>
+            </div>
+
+            <!-- Student Suggestions -->
+            <div class="card">
+                <h3>💡 Student Suggestions</h3>
+                <div id="suggestionsList" class="posts-list">Loading suggestions...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Performances List -->
+    <div class="card">
+        <h3>📈 Course Performances</h3>
+        <div id="performancesList">Loading performances...</div>
+    </div>
+
+    <!-- All Posts -->
+    <div class="card">
+        <h3>📢 All Posts (Announcements, Materials, Assignments)</h3>
+        <div id="postsList" class="posts-list">Loading posts...</div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let selectedFormat = 'standard';
+        let currentStreamUrl = null;
+        
+        try {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'lecturer') window.location.href = 'index.html';
+        } catch(e) { window.location.href = 'index.html'; }
+        
+        document.getElementById('programBadge').innerHTML = currentUser.programName || currentUser.programCode;
+        document.getElementById('levelBadge').innerHTML = currentUser.level;
+        
+        function selectFormat(format) {
+            selectedFormat = format;
+            document.querySelectorAll('.format-btn').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`.format-btn[data-format="${format}"]`).classList.add('selected');
+        }
+        
+        // Display selected files for bulk upload
+        document.getElementById('materialFiles').addEventListener('change', function(e) {
+            const fileList = document.getElementById('fileList');
+            if (this.files.length > 0) {
+                fileList.style.display = 'block';
+                fileList.innerHTML = '<strong>Selected Files:</strong>' + Array.from(this.files).map(f => `<div class="file-item">📄 ${f.name} (${(f.size/1024).toFixed(1)} KB)</div>`).join('');
+            } else {
+                fileList.style.display = 'none';
+            }
+        });
+        
+        // ============ LIVE CLASS FUNCTIONS ============
+        async function startLiveClass() {
+            const courseName = document.getElementById('liveCourseNameInput').value.trim();
+            const lecturerName = document.getElementById('lecturerNameInput').value.trim();
+            const streamUrl = document.getElementById('streamUrlInput').value.trim();
+            if (!courseName) { alert('Please enter course name'); return; }
+            if (!streamUrl) { alert('Please enter stream URL'); return; }
+            
+            await fetch('/api/live/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ courseName, lecturerName, streamUrl })
+            });
+            
+            currentStreamUrl = streamUrl;
+            document.getElementById('liveCourseName').innerText = courseName;
+            document.getElementById('liveStreamUrl').innerText = streamUrl;
+            document.getElementById('liveSection').style.display = 'block';
+            alert(`✅ Live class "${courseName}" started!\n\nStream URL: ${streamUrl}`);
+        }
+        
+        async function stopLiveClass() {
+            await fetch('/api/live/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+            document.getElementById('liveSection').style.display = 'none';
+            alert('Live class ended.');
+        }
+        
+        function copyStreamUrl() {
+            if (currentStreamUrl) {
+                navigator.clipboard.writeText(currentStreamUrl);
+                alert('Stream URL copied to clipboard!');
+            }
+        }
+        
+        // ============ POST FUNCTIONS ============
+        async function postAnnouncement() {
+            const title = document.getElementById('announcementTitle').value.trim();
+            const content = document.getElementById('announcementContent').value.trim();
+            const file = document.getElementById('announcementFile').files[0];
+            if (!title || !content) { alert('Please enter title and content'); return; }
+            
+            const fd = new FormData();
+            fd.append('programCode', currentUser.programCode);
+            fd.append('level', currentUser.level);
+            fd.append('title', title);
+            fd.append('content', content);
+            fd.append('lecturerName', currentUser.fullname || currentUser.name);
+            fd.append('announcementFormat', selectedFormat);
+            if (file) fd.append('announcementFile', file);
+            
+            const res = await fetch('/api/posts', { method: 'POST', body: fd });
+            if (res.ok) {
+                document.getElementById('announcementTitle').value = '';
+                document.getElementById('announcementContent').value = '';
+                document.getElementById('announcementFile').value = '';
+                loadPosts();
+                alert('✅ Announcement posted!');
+            } else { alert('❌ Error posting'); }
+        }
+        
+        async function uploadMultipleMaterials() {
+            const courseName = document.getElementById('materialCourseName').value.trim();
+            const title = document.getElementById('materialTitle').value.trim();
+            const desc = document.getElementById('materialDesc').value.trim();
+            const type = document.getElementById('materialType').value;
+            const files = document.getElementById('materialFiles').files;
+            
+            if (!title || files.length === 0) { alert('Please enter title and select files'); return; }
+            
+            const fd = new FormData();
+            fd.append('programCode', currentUser.programCode);
+            fd.append('level', currentUser.level);
+            fd.append('title', courseName ? `${courseName} - ${title}` : title);
+            fd.append('content', desc);
+            fd.append('lecturerName', currentUser.fullname || currentUser.name);
+            fd.append('mediaType', type);
+            for (let i = 0; i < files.length; i++) { fd.append('materialFiles', files[i]); }
+            
+            const res = await fetch('/api/posts', { method: 'POST', body: fd });
+            if (res.ok) {
+                document.getElementById('materialCourseName').value = '';
+                document.getElementById('materialTitle').value = '';
+                document.getElementById('materialDesc').value = '';
+                document.getElementById('materialFiles').value = '';
+                document.getElementById('fileList').style.display = 'none';
+                loadPosts();
+                alert(`✅ ${files.length} files uploaded successfully!`);
+            } else { alert('❌ Error uploading'); }
+        }
+        
+        async function createAssignment() {
+            const title = document.getElementById('assignmentTitle').value.trim();
+            const desc = document.getElementById('assignmentDesc').value.trim();
+            const dueDate = document.getElementById('assignmentDueDate').value;
+            const points = document.getElementById('assignmentPoints').value;
+            const file = document.getElementById('assignmentFile').files[0];
+            if (!title) { alert('Please enter title'); return; }
+            
+            const fd = new FormData();
+            fd.append('programCode', currentUser.programCode);
+            fd.append('level', currentUser.level);
+            fd.append('title', title);
+            fd.append('content', desc);
+            fd.append('lecturerName', currentUser.fullname || currentUser.name);
+            fd.append('dueDate', dueDate);
+            fd.append('points', points);
+            if (file) fd.append('assignmentFile', file);
+            
+            const res = await fetch('/api/posts', { method: 'POST', body: fd });
+            if (res.ok) {
+                document.getElementById('assignmentTitle').value = '';
+                document.getElementById('assignmentDesc').value = '';
+                document.getElementById('assignmentDueDate').value = '';
+                document.getElementById('assignmentPoints').value = '';
+                document.getElementById('assignmentFile').value = '';
+                loadPosts();
+                alert('✅ Assignment created!');
+            } else { alert('❌ Error creating assignment'); }
+        }
+        
+        // ============ PERFORMANCE FUNCTIONS ============
+        async function exposePerformance() {
+            const courseName = document.getElementById('perfCourseName').value.trim();
+            const highestMark = document.getElementById('highestMark').value;
+            const lowestMark = document.getElementById('lowestMark').value;
+            const markGap = document.getElementById('markGap').value;
+            const majorityRange = document.getElementById('majorityRange').value;
+            const lecturerStatement = document.getElementById('lecturerStatement').value;
+            const image = document.getElementById('performanceImage').files[0];
+            
+            if (!courseName) { alert('Please enter course name'); return; }
+            
+            const fd = new FormData();
+            fd.append('programCode', currentUser.programCode);
+            fd.append('level', currentUser.level);
+            fd.append('courseName', courseName);
+            fd.append('highestMark', highestMark);
+            fd.append('lowestMark', lowestMark);
+            fd.append('markGap', markGap);
+            fd.append('majorityRange', majorityRange);
+            fd.append('lecturerStatement', lecturerStatement);
+            if (image) fd.append('performanceImage', image);
+            
+            const res = await fetch('/api/performance', { method: 'POST', body: fd });
+            if (res.ok) {
+                document.getElementById('perfCourseName').value = '';
+                document.getElementById('highestMark').value = '';
+                document.getElementById('lowestMark').value = '';
+                document.getElementById('markGap').value = '';
+                document.getElementById('majorityRange').value = '';
+                document.getElementById('lecturerStatement').value = '';
+                document.getElementById('performanceImage').value = '';
+                loadPerformances();
+                alert('✅ Course performance exposed!');
+            } else { alert('❌ Error exposing performance'); }
+        }
+        
+        async function deletePerformance(id) {
+            if (confirm('Delete this performance record?')) {
+                await fetch(`/api/performance/${id}`, { method: 'DELETE' });
+                loadPerformances();
+            }
+        }
+        
+        async function loadPerformances() {
+            try {
+                const res = await fetch(`/api/performance/${currentUser.programCode}/${currentUser.level}`);
+                const performances = await res.json();
+                const container = document.getElementById('performancesList');
+                if (!performances.length) { container.innerHTML = '<p>No performance records yet.</p>'; return; }
+                container.innerHTML = performances.map(p => `
+                    <div class="performance-card">
+                        <h4> ${escapeHtml(p.courseName)}</h4>
+                        <div class="performance-stats">
+                            <div class="stat-box"><div class="stat-value">${p.highestMark}%</div><div>Highest Mark</div></div>
+                            <div class="stat-box"><div class="stat-value">${p.lowestMark}%</div><div>Lowest Mark</div></div>
+                            <div class="stat-box"><div class="stat-value">${p.markGap}%</div><div>Gap from Highest</div></div>
+                            <div class="stat-box"><div class="stat-value">${p.majorityRange}</div><div>Majority Range</div></div>
+                        </div>
+                        <p><strong> Lecturer's Statement:</strong> ${escapeHtml(p.lecturerStatement)}</p>
+                        ${p.imageUrl ? `<img src="${p.imageUrl}" style="max-width:100%;border-radius:10px;margin-top:10px">` : ''}
+                        <canvas id="chart-${p.id}" style="margin-top:15px"></canvas>
+                        <button class="btn-danger" onclick="deletePerformance(${p.id})" style="margin-top:15px;padding:5px 15px">Delete</button>
+                    </div>
+                `).join('');
+                performances.forEach(p => createChart(p.id, p.highestMark, p.lowestMark, p.markGap, p.majorityRange));
+            } catch(e) { console.error(e); }
+        }
+        
+        function createChart(id, highest, lowest, gap, majorityRange) {
+            const ctx = document.getElementById(`chart-${id}`).getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Highest Mark', 'Lowest Mark', 'Average Gap', 'Majority Range'],
+                    datasets: [{ label: 'Marks (%)', data: [highest, lowest, gap, 70], backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#1a4a6f'], borderRadius: 10 }]
+                },
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, title: { display: true, text: `Performance Distribution - ${majorityRange}` } } }
+            });
+        }
+        
+        // ============ LOAD FUNCTIONS ============
+        async function loadPosts() {
+            try {
+                const res = await fetch(`/api/posts/${currentUser.programCode}/${currentUser.level}`);
+                const posts = await res.json();
+                const container = document.getElementById('postsList');
+                if (!posts.length) { container.innerHTML = '<p>No posts yet.</p>'; return; }
+                container.innerHTML = posts.map(p => {
+                    let formatClass = '';
+                    if (p.announcementFormat === 'important') formatClass = 'format-important';
+                    else if (p.announcementFormat === 'deadline') formatClass = 'format-deadline';
+                    else if (p.announcementFormat === 'celebration') formatClass = 'format-celebration';
+                    else formatClass = 'format-standard';
+                    return `
+                    <div class="post-card ${formatClass}">
+                        <div class="post-title">${p.dueDate ? '📝 ' : '📢 '}${escapeHtml(p.title)}</div>
+                        <div class="post-meta"> ${escapeHtml(p.lecturerName)} • 📅 ${p.date}${p.dueDate ? ` • ⏰ Due: ${p.dueDate} •  Points: ${p.points || 'N/A'}` : ''}</div>
+                        <div class="post-content">${escapeHtml(p.content)}</div>
+                        ${p.media ? `<div class="post-media">${p.media.map(m => renderMedia(m)).join('')}</div>` : ''}
+                        <button onclick="deletePost(${p.id})" style="background:#dc2626;color:white;border:none;padding:6px 15px;border-radius:8px;margin-top:10px;cursor:pointer">🗑️ Delete</button>
+                    </div>
+                `}).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function loadSuggestions() {
+            try {
+                const res = await fetch(`/api/suggestions/${currentUser.programCode}/${currentUser.level}`);
+                const suggestions = await res.json();
+                const container = document.getElementById('suggestionsList');
+                if (!suggestions.length) { container.innerHTML = '<p>No suggestions yet.</p>'; return; }
+                container.innerHTML = suggestions.map(s => `
+                    <div class="suggestion-card">
+                        <span class="suggestion-badge">${escapeHtml(s.type || 'Suggestion')}</span>
+                        <div><strong>${escapeHtml(s.name)}</strong> ${s.regNumber ? `(${escapeHtml(s.regNumber)})` : ''}</div>
+                        <div style="margin:8px 0">${escapeHtml(s.message)}</div>
+                        <small>📅 ${s.submittedAt}</small>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function deletePost(id) {
+            if (confirm('Delete this item?')) {
+                await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+                loadPosts();
+            }
+        }
+        
+        function renderMedia(media) {
+            if (!media) return '';
+            if (media.type === 'audio') return `<audio controls src="${media.url}"></audio>`;
+            if (media.type === 'video') return `<video controls src="${media.url}" width="100%"></video>`;
+            if (media.type === 'image') return `<img src="${media.url}" alt="Image">`;
+            return `<a href="${media.url}" target="_blank">📄 Download ${media.filename || 'Document'}</a>`;
+        }
+        
+        function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m == '&' ? '&amp;' : (m == '<' ? '&lt;' : '&gt;')); }
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        loadPosts();
+        loadSuggestions();
+        loadPerformances();
+        setInterval(loadPosts, 10000);
+        setInterval(loadSuggestions, 15000);
+    </script>
+</body>
+</html>
