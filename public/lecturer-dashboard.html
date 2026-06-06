@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturer Dashboard - Mzuzu University</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:#f0f4f8;padding-bottom:40px}
+        .navbar{background:#0a2b3e;color:white;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:100}
+        .logo{font-size:1.3rem;font-weight:bold}
+        .logo span{color:#fdbb4d}
+        .user-info{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+        .badge{background:#fdbb4d;color:#0a2b3e;padding:6px 14px;border-radius:40px;font-size:12px;font-weight:bold}
+        .btn{background:#1a4a6f;color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:bold}
+        .btn-danger{background:#dc2626}
+        .btn-success{background:#10b981}
+        .btn-warning{background:#f59e0b;color:#0a2b3e}
+        .container{max-width:1400px;margin:24px auto;padding:0 20px}
+        .compartments-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:24px;margin-top:20px}
+        .compartment-card{background:white;border-radius:24px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);cursor:pointer;transition:transform 0.2s}
+        .compartment-card:hover{transform:translateY(-4px)}
+        .compartment-cover{height:120px;background:linear-gradient(135deg,#1a4a6f,#2c7da0);display:flex;align-items:center;justify-content:center;font-size:48px}
+        .compartment-body{padding:20px}
+        .compartment-title{font-size:1.2rem;font-weight:bold;color:#0a2b3e;margin-bottom:8px}
+        .compartment-desc{color:#64748b;font-size:14px;margin-bottom:15px}
+        .compartment-stats{display:flex;gap:15px;font-size:11px;color:#94a3b8;margin-bottom:15px}
+        .detail-header{background:linear-gradient(135deg,#1a4a6f,#2c7da0);color:white;padding:30px;border-radius:24px;margin-bottom:20px}
+        .tabs{display:flex;gap:4px;background:#f1f5f9;padding:0 10px;border-radius:16px;margin-bottom:20px;flex-wrap:wrap}
+        .tab{padding:12px 20px;cursor:pointer;background:transparent;border:none;font-weight:600;color:#64748b;border-radius:12px}
+        .tab.active{background:#1a4a6f;color:white}
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
+        .modal-content{background:white;border-radius:28px;padding:30px;width:90%;max-width:600px;max-height:80vh;overflow-y:auto}
+        .modal-content input,.modal-content textarea,.modal-content select{width:100%;padding:12px;margin:10px 0;border-radius:14px;border:1px solid #e2e8f0}
+        .students-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+        .student-card{background:#f8fafc;border-radius:20px;padding:20px;display:flex;gap:15px;align-items:center}
+        .student-avatar{width:60px;height:60px;border-radius:50%;object-fit:cover;background:#1a4a6f;display:flex;align-items:center;justify-content:center;font-size:24px;color:white}
+        .student-info{flex:1}
+        .student-name{font-weight:bold;margin-bottom:4px}
+        .performance-bar{height:6px;background:#e2e8f0;border-radius:3px;margin:8px 0;overflow:hidden}
+        .performance-fill{height:100%;background:#10b981;border-radius:3px}
+        .suggestion-card{background:#f8fafc;border-radius:16px;padding:15px;margin-bottom:15px;border-left:4px solid #10b981}
+        .suggestion-badge{background:#f59e0b;color:#0a2b3e;padding:2px 8px;border-radius:20px;font-size:10px;display:inline-block;margin-bottom:8px}
+        @media (max-width:768px){.compartments-grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🎓 Mzuzu University <span>Lecturer Portal</span></div>
+        <div class="user-info">
+            <span class="badge" id="programBadge">Loading...</span>
+            <span class="badge">Year <span id="levelBadge">-</span></span>
+            <button class="btn" onclick="showCreateModal()">+ Create Compartment</button>
+            <button class="btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="compartmentsView">
+            <h2>📚 Course Compartments</h2>
+            <div id="compartmentsList" class="compartments-grid">Loading...</div>
+        </div>
+        <div id="detailView" style="display:none">
+            <button class="btn" onclick="backToCompartments()" style="margin-bottom:20px">← Back to Compartments</button>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- Create Compartment Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content"><h3>📚 Create Course Compartment</h3>
+            <input type="text" id="compartmentName" placeholder="Course Name">
+            <textarea id="compartmentDesc" placeholder="Description" rows="3"></textarea>
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-success" onclick="createCompartment()" style="flex:1">Create</button><button class="btn" onclick="closeModal('createModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="modal">
+        <div class="modal-content"><h3>👨‍🎓 Add Student</h3>
+            <input type="text" id="studentName" placeholder="Full Name">
+            <input type="email" id="studentEmail" placeholder="Email">
+            <input type="text" id="studentRegNumber" placeholder="Registration Number">
+            <input type="file" id="studentPhoto" accept="image/*">
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-success" onclick="addStudent()" style="flex:1">Add</button><button class="btn" onclick="closeModal('addStudentModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Performance Modal -->
+    <div id="performanceModal" class="modal">
+        <div class="modal-content"><h3>📊 Update Performance</h3>
+            <div id="performanceStudentInfo"></div>
+            <input type="number" id="assignmentScore" placeholder="Assignment Score %">
+            <input type="number" id="testScore" placeholder="Test Score %">
+            <input type="number" id="attendance" placeholder="Attendance %">
+            <textarea id="lecturerStatement" rows="3" placeholder="Lecturer's Statement"></textarea>
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-success" onclick="updatePerformance()" style="flex:1">Update</button><button class="btn" onclick="closeModal('performanceModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Warning Modal -->
+    <div id="warningModal" class="modal">
+        <div class="modal-content"><h3>⚠️ Issue Warning</h3>
+            <div id="warningStudentInfo"></div>
+            <textarea id="warningMessage" rows="3" placeholder="Warning message..."></textarea>
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-warning" onclick="issueWarning()" style="flex:1">Issue</button><button class="btn" onclick="closeModal('warningModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Announcement Modal -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content"><h3>📢 Post Announcement</h3>
+            <input type="text" id="announcementTitle" placeholder="Title">
+            <textarea id="announcementContent" rows="3" placeholder="Content"></textarea>
+            <input type="file" id="announcementFile">
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-success" onclick="postAnnouncement()" style="flex:1">Post</button><button class="btn" onclick="closeModal('announcementModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Material Modal -->
+    <div id="materialModal" class="modal">
+        <div class="modal-content"><h3>📤 Upload Material</h3>
+            <input type="text" id="materialTitle" placeholder="Title">
+            <textarea id="materialDesc" rows="2" placeholder="Description"></textarea>
+            <select id="materialType"><option value="document">Document</option><option value="video">Video</option><option value="audio">Audio</option><option value="image">Image</option></select>
+            <input type="file" id="materialFile">
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-success" onclick="uploadMaterial()" style="flex:1">Upload</button><button class="btn" onclick="closeModal('materialModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <!-- Assignment Modal -->
+    <div id="assignmentModal" class="modal">
+        <div class="modal-content"><h3>📝 Create Assignment</h3>
+            <input type="text" id="assignmentTitle" placeholder="Title">
+            <textarea id="assignmentDesc" rows="3" placeholder="Instructions"></textarea>
+            <input type="date" id="assignmentDueDate"><input type="number" id="assignmentPoints" placeholder="Total Points">
+            <input type="file" id="assignmentFile">
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn-success" onclick="createAssignment()" style="flex:1">Create</button><button class="btn" onclick="closeModal('assignmentModal')" style="background:#ccc;flex:1">Cancel</button></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null, currentCompartment = null, currentTab = 'announcements', currentStudent = null;
+        
+        try { currentUser = JSON.parse(localStorage.getItem('currentUser')); if (!currentUser || currentUser.role !== 'lecturer') window.location.href = 'index.html'; } catch(e) { window.location.href = 'index.html'; }
+        
+        document.getElementById('programBadge').innerHTML = currentUser.programName || currentUser.programCode;
+        document.getElementById('levelBadge').innerHTML = currentUser.level;
+        
+        function showCreateModal() { document.getElementById('createModal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        
+        async function loadCompartments() {
+            try {
+                const res = await fetch(`/api/compartments/${currentUser.programCode}/${currentUser.level}`);
+                const compartments = await res.json();
+                const container = document.getElementById('compartmentsList');
+                if (!compartments.length) { container.innerHTML = '<div style="text-align:center;padding:60px;background:white;border-radius:20px">📭 No course compartments. Click "Create Compartment" to get started.</div>'; return; }
+                container.innerHTML = compartments.map(c => `<div class="compartment-card" onclick="openCompartment(${c.id})"><div class="compartment-cover">📖</div><div class="compartment-body"><div class="compartment-title">${escapeHtml(c.compartmentName)}</div><div class="compartment-desc">${escapeHtml(c.description) || 'No description'}</div><div class="compartment-stats"><span>📚 ${c.materials?.length || 0}</span><span>📝 ${c.assignments?.length || 0}</span><span>👨‍🎓 ${c.students?.length || 0}</span></div><button class="btn-danger" onclick="event.stopPropagation(); deleteCompartment(${c.id})" style="padding:5px 15px">Delete</button></div></div>`).join('');
+            } catch(e) { console.error(e); }
+        }
+        
+        async function createCompartment() {
+            const name = document.getElementById('compartmentName').value.trim();
+            const desc = document.getElementById('compartmentDesc').value.trim();
+            if (!name) { alert('Enter course name'); return; }
+            const res = await fetch('/api/compartments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ programCode: currentUser.programCode, level: currentUser.level, compartmentName: name, description: desc, lecturerName: currentUser.fullname || currentUser.name }) });
+            const data = await res.json();
+            if (data.success) { closeModal('createModal'); document.getElementById('compartmentName').value = ''; document.getElementById('compartmentDesc').value = ''; loadCompartments(); alert('Created!'); }
+            else alert('Error');
+        }
+        
+        async function openCompartment(id) {
+            try {
+                const res = await fetch(`/api/compartments/detail/${id}`);
+                if (!res.ok) throw new Error('Not found');
+                currentCompartment = await res.json();
+                document.getElementById('compartmentsView').style.display = 'none';
+                document.getElementById('detailView').style.display = 'block';
+                renderDetailView();
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+        
+        function renderDetailView() {
+            const a = currentCompartment.announcements || [], m = currentCompartment.materials || [], as = currentCompartment.assignments || [], s = currentCompartment.students || [], sug = currentCompartment.suggestions || [];
+            document.getElementById('detailContent').innerHTML = `<div class="detail-header"><h1>${escapeHtml(currentCompartment.compartmentName)}</h1><p>${escapeHtml(currentCompartment.description) || 'No description'}</p><p>👨‍🏫 ${currentUser.fullname || currentUser.name}</p><p>🆔 ID: ${currentCompartment.id}</p></div><div class="tabs"><button class="tab ${currentTab==='announcements'?'active':''}" onclick="switchTab('announcements')">📢 Announcements</button><button class="tab ${currentTab==='materials'?'active':''}" onclick="switchTab('materials')">📁 Materials</button><button class="tab ${currentTab==='assignments'?'active':''}" onclick="switchTab('assignments')">📝 Assignments</button><button class="tab ${currentTab==='students'?'active':''}" onclick="switchTab('students')">👨‍🎓 Students (${s.length})</button><button class="tab ${currentTab==='suggestions'?'active':''}" onclick="switchTab('suggestions')">💡 Suggestions (${sug.length})</button><button class="tab ${currentTab==='info'?'active':''}" onclick="switchTab('info')">ℹ️ Info</button></div><div id="tabContent"></div><div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" onclick="document.getElementById('announcementModal').style.display='flex'">📢 Post</button><button class="btn" onclick="document.getElementById('materialModal').style.display='flex'">📤 Upload</button><button class="btn" onclick="document.getElementById('assignmentModal').style.display='flex'">📝 Assignment</button><button class="btn-success" onclick="document.getElementById('addStudentModal').style.display='flex'">👨‍🎓 Add Student</button></div>`;
+            switchTab(currentTab);
+        }
+        
+        async function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+            if(event?.target) event.target.classList.add('active');
+            const c = document.getElementById('tabContent');
+            const a = currentCompartment.announcements || [], m = currentCompartment.materials || [], as = currentCompartment.assignments || [], s = currentCompartment.students || [], sug = currentCompartment.suggestions || [];
+            if(tab==='announcements') c.innerHTML = a.length ? a.map(an=>`<div style="background:#f8fafc;padding:15px;border-radius:16px;margin-bottom:15px;border-left:4px solid #1a4a6f"><strong>📢 ${escapeHtml(an.title)}</strong><br><small>${escapeHtml(an.author)} • ${an.createdAt}</small><p>${escapeHtml(an.content)}</p>${an.attachment?`<a href="${an.attachment.url}" target="_blank">📎 ${an.attachment.filename}</a>`:''}<button class="btn-danger" onclick="deleteAnnouncement(${an.id})" style="margin-top:10px;padding:5px 12px">Delete</button></div>`).join('') : '<p>No announcements</p>';
+            else if(tab==='materials') c.innerHTML = m.length ? m.map(mat=>`<div style="background:#f8fafc;padding:15px;border-radius:16px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center"><div><strong>📁 ${escapeHtml(mat.title)}</strong><br><small>${escapeHtml(mat.description||'')}</small></div><div><a href="${mat.url}" target="_blank" class="btn" style="padding:5px 12px">Open</a><button class="btn-danger" onclick="deleteMaterial(${mat.id})" style="margin-left:10px;padding:5px 12px">Delete</button></div></div>`).join('') : '<p>No materials</p>';
+            else if(tab==='assignments') c.innerHTML = as.length ? as.map(ass=>`<div style="background:#fef3c7;padding:15px;border-radius:16px;margin-bottom:15px"><strong>📝 ${escapeHtml(ass.title)}</strong><br><small>Due: ${ass.dueDate||'No due date'} | Points: ${ass.totalPoints||'N/A'}</small><p>${escapeHtml(ass.description||'')}</p>${ass.attachment?`<a href="${ass.attachment.url}" target="_blank">📎 ${ass.attachment.filename}</a>`:''}<button class="btn-danger" onclick="deleteAssignment(${ass.id})" style="margin-top:10px;padding:5px 12px">Delete</button></div>`).join('') : '<p>No assignments</p>';
+            else if(tab==='students') c.innerHTML = s.length ? `<div class="students-grid">${s.map(st=>`<div class="student-card"><div class="student-avatar">👨‍🎓</div><div class="student-info"><div class="student-name">${escapeHtml(st.name)}</div><small>${escapeHtml(st.studentId||st.email)}</small><div class="performance-bar"><div class="performance-fill" style="width:${st.performance?.averageScore||0}%"></div></div><small>Avg: ${st.performance?.averageScore||0}%</small><div style="margin-top:8px;display:flex;gap:8px"><button class="btn" onclick="viewPerformance(${st.id})" style="padding:4px 10px">📊</button><button class="btn-warning" onclick="showWarningModal(${st.id},'${escapeHtml(st.name).replace(/'/g,"\\'")}')" style="padding:4px 10px">⚠️</button><button class="btn-danger" onclick="removeStudent(${st.id})" style="padding:4px 10px">🗑️</button></div>${st.warnings?st.warnings.map(w=>`<div style="background:#fef3c7;padding:8px;border-radius:10px;margin-top:8px;font-size:11px"><strong>⚠️</strong> ${escapeHtml(w.message)}<br><small>${w.date}</small></div>`).join(''):''}${st.lecturerStatement?`<div style="background:#e0f2fe;padding:8px;border-radius:10px;margin-top:8px;font-size:11px"><strong>📝</strong> ${escapeHtml(st.lecturerStatement)}</div>`:''}</div></div>`).join('')}</div>` : '<p>No students</p>';
+            else if(tab==='suggestions') c.innerHTML = sug.length ? `<div>${sug.map(sg=>`<div class="suggestion-card"><span class="suggestion-badge">${escapeHtml(sg.type||'Suggestion')}</span><div><strong>${escapeHtml(sg.name)}</strong> ${sg.regNumber?`(${escapeHtml(sg.regNumber)})`:''}</div><div>${escapeHtml(sg.message)}</div><small>${sg.submittedAt}</small><div style="margin-top:8px"><button class="btn-success" onclick="respondToSuggestion(${sg.id},'approved')" style="padding:4px 12px">✓ Acknowledge</button></div></div>`).join('')}</div>` : '<p>No suggestions</p>';
+            else c.innerHTML = `<div><p><strong>Description:</strong> ${escapeHtml(currentCompartment.description)||'Not provided'}</p><p><strong>Students:</strong> ${s.length}</p><p><strong>Materials:</strong> ${m.length}</p><p><strong>Assignments:</strong> ${as.length}</p><button class="btn" onclick="editCourseInfo()">✏️ Edit</button></div>`;
+        }
+        
+        async function addStudent() {
+            const name = document.getElementById('studentName').value.trim();
+            const email = document.getElementById('studentEmail').value.trim();
+            if (!name || !email) { alert('Enter name and email'); return; }
+            const fd = new FormData();
+            fd.append('name', name); fd.append('email', email);
+            fd.append('studentId', document.getElementById('studentRegNumber').value);
+            const photo = document.getElementById('studentPhoto').files[0];
+            if (photo) fd.append('studentPhoto', photo);
+            const res = await fetch(`/api/compartments/${currentCompartment.id}/students`, { method: 'POST', body: fd });
+            if (res.ok) { closeModal('addStudentModal'); document.getElementById('studentName').value=''; document.getElementById('studentEmail').value=''; document.getElementById('studentRegNumber').value=''; document.getElementById('studentPhoto').value=''; openCompartment(currentCompartment.id); alert('Student added!'); }
+            else alert('Error');
+        }
+        
+        function viewPerformance(id) { const s = currentCompartment.students.find(st=>st.id===id); if(s) { currentStudent=s; document.getElementById('performanceStudentInfo').innerHTML=`<h3>${escapeHtml(s.name)}</h3><p>${escapeHtml(s.studentId||s.email)}</p>`; document.getElementById('assignmentScore').value=s.performance?.assignmentScore||''; document.getElementById('testScore').value=s.performance?.testScore||''; document.getElementById('attendance').value=s.performance?.attendance||''; document.getElementById('lecturerStatement').value=s.lecturerStatement||''; document.getElementById('performanceModal').style.display='flex'; } }
+        
+        function showWarningModal(id,name) { currentStudent={id:id,name:name}; document.getElementById('warningStudentInfo').innerHTML=`<h3>${escapeHtml(name)}</h3>`; document.getElementById('warningModal').style.display='flex'; }
+        
+        async function updatePerformance() {
+            const as = parseFloat(document.getElementById('assignmentScore').value)||0, ts = parseFloat(document.getElementById('testScore').value)||0, att = parseFloat(document.getElementById('attendance').value)||0, avg = (as+ts)/2;
+            await fetch(`/api/compartments/${currentCompartment.id}/students/${currentStudent.id}/performance`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignmentScore: as, testScore: ts, attendance: att, averageScore: avg, lecturerStatement: document.getElementById('lecturerStatement').value }) });
+            closeModal('performanceModal'); openCompartment(currentCompartment.id); alert('Updated!');
+        }
+        
+        async function issueWarning() {
+            const msg = document.getElementById('warningMessage').value.trim();
+            if (!msg) { alert('Enter message'); return; }
+            const student = currentCompartment.students.find(s=>s.id===currentStudent.id);
+            if(student) { student.warnings = student.warnings||[]; student.warnings.push({id:Date.now(),message:msg,date:new Date().toLocaleString()}); await fetch(`/api/compartments/${currentCompartment.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ students: currentCompartment.students }) }); closeModal('warningModal'); document.getElementById('warningMessage').value=''; openCompartment(currentCompartment.id); alert('Warning issued!'); }
+        }
+        
+        async function removeStudent(id) { if(confirm('Remove?')) { await fetch(`/api/compartments/${currentCompartment.id}/students/${id}`, { method: 'DELETE' }); openCompartment(currentCompartment.id); } }
+        
+        async function respondToSuggestion(id,action) { const sug = currentCompartment.suggestions?.find(s=>s.id===id); if(sug) { sug.status=action; sug.respondedAt=new Date().toLocaleString(); await fetch(`/api/compartments/${currentCompartment.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ suggestions: currentCompartment.suggestions }) }); openCompartment(currentCompartment.id); alert(`Marked as ${action}!`); } }
+        
+        async function editCourseInfo() { const newName = prompt('Course Name:', currentCompartment.compartmentName); if(newName) { const newDesc = prompt('Description:', currentCompartment.description||''); await fetch(`/api/compartments/${currentCompartment.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ compartmentName: newName, description: newDesc }) }); openCompartment(currentCompartment.id); alert('Updated!'); } }
+        
+        async function postAnnouncement() {
+            const title = document.getElementById('announcementTitle').value.trim();
+            const content = document.getElementById('announcementContent').value.trim();
+            if (!title || !content) { alert('Enter title and content'); return; }
+            const fd = new FormData();
+            fd.append('title', title); fd.append('content', content);
+            fd.append('author', currentUser.fullname || currentUser.name);
+            const file = document.getElementById('announcementFile').files[0];
+            if (file) fd.append('attachment', file);
+            const res = await fetch(`/api/compartments/${currentCompartment.id}/announcements`, { method: 'POST', body: fd });
+            if (res.ok) { closeModal('announcementModal'); document.getElementById('announcementTitle').value=''; document.getElementById('announcementContent').value=''; document.getElementById('announcementFile').value=''; openCompartment(currentCompartment.id); alert('Posted!'); }
+            else alert('Error');
+        }
+        
+        async function uploadMaterial() {
+            const title = document.getElementById('materialTitle').value.trim();
+            const file = document.getElementById('materialFile').files[0];
+            if (!title || !file) { alert('Enter title and select file'); return; }
+            const fd = new FormData();
+            fd.append('title', title); fd.append('description', document.getElementById('materialDesc').value);
+            fd.append('type', document.getElementById('materialType').value);
+            fd.append('file', file);
+            const res = await fetch(`/api/compartments/${currentCompartment.id}/materials`, { method: 'POST', body: fd });
+            if (res.ok) { closeModal('materialModal'); document.getElementById('materialTitle').value=''; document.getElementById('materialDesc').value=''; document.getElementById('materialFile').value=''; openCompartment(currentCompartment.id); alert('Uploaded!'); }
+            else alert('Error');
+        }
+        
+        async function createAssignment() {
+            const title = document.getElementById('assignmentTitle').value.trim();
+            if (!title) { alert('Enter title'); return; }
+            const fd = new FormData();
+            fd.append('title', title); fd.append('description', document.getElementById('assignmentDesc').value);
+            fd.append('dueDate', document.getElementById('assignmentDueDate').value);
+            fd.append('totalPoints', document.getElementById('assignmentPoints').value);
+            const file = document.getElementById('assignmentFile').files[0];
+            if (file) fd.append('attachment', file);
+            const res = await fetch(`/api/compartments/${currentCompartment.id}/assignments`, { method: 'POST', body: fd });
+            if (res.ok) { closeModal('assignmentModal'); document.getElementById('assignmentTitle').value=''; document.getElementById('assignmentDesc').value=''; document.getElementById('assignmentDueDate').value=''; document.getElementById('assignmentPoints').value=''; document.getElementById('assignmentFile').value=''; openCompartment(currentCompartment.id); alert('Created!'); }
+            else alert('Error');
+        }
+        
+        async function deleteAnnouncement(id) { if(confirm('Delete?')) { await fetch(`/api/compartments/${currentCompartment.id}/announcements/${id}`, { method: 'DELETE' }); openCompartment(currentCompartment.id); } }
+        async function deleteMaterial(id) { if(confirm('Delete?')) { await fetch(`/api/compartments/${currentCompartment.id}/materials/${id}`, { method: 'DELETE' }); openCompartment(currentCompartment.id); } }
+        async function deleteAssignment(id) { if(confirm('Delete?')) { await fetch(`/api/compartments/${currentCompartment.id}/assignments/${id}`, { method: 'DELETE' }); openCompartment(currentCompartment.id); } }
+        async function deleteCompartment(id) { if(confirm('Delete compartment? All content lost!')) { await fetch(`/api/compartments/${id}`, { method: 'DELETE' }); loadCompartments(); } }
+        
+        function backToCompartments() { currentCompartment=null; document.getElementById('compartmentsView').style.display='block'; document.getElementById('detailView').style.display='none'; loadCompartments(); }
+        function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m=>m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
+        function logout() { localStorage.clear(); window.location.href='index.html'; }
+        
+        window.showCreateModal=showCreateModal; window.closeModal=closeModal; window.createCompartment=createCompartment; window.openCompartment=openCompartment; window.backToCompartments=backToCompartments;
+        window.switchTab=switchTab; window.addStudent=addStudent; window.updatePerformance=updatePerformance; window.issueWarning=issueWarning; window.removeStudent=removeStudent;
+        window.respondToSuggestion=respondToSuggestion; window.editCourseInfo=editCourseInfo; window.postAnnouncement=postAnnouncement; window.uploadMaterial=uploadMaterial;
+        window.createAssignment=createAssignment; window.deleteAnnouncement=deleteAnnouncement; window.deleteMaterial=deleteMaterial; window.deleteAssignment=deleteAssignment;
+        window.deleteCompartment=deleteCompartment; window.viewPerformance=viewPerformance; window.showWarningModal=showWarningModal; window.logout=logout;
+        
+        loadCompartments();
+    </script>
+</body>
+</html>
