@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSCREC Official Dashboard</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,sans-serif}
+        body{background:#f0f4f8;padding:20px}
+        .navbar{background:#b22222;color:white;padding:15px 25px;border-radius:20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+        .btn{background:#1a4a6f;color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:bold}
+        .btn-danger{background:#dc2626}
+        .btn-success{background:#10b981}
+        .card{background:white;border-radius:20px;padding:25px;margin-bottom:25px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+        .card h3{margin-bottom:15px;color:#b22222;border-left:4px solid #b22222;padding-left:12px}
+        input,textarea,select{width:100%;padding:12px;margin:10px 0;border-radius:10px;border:1px solid #ddd}
+        .post-card{background:#f8fafc;border-radius:15px;padding:20px;margin-bottom:15px}
+        .suggestion-card{background:#fff3cd;border-radius:12px;padding:15px;margin-bottom:12px}
+        .contact-card{background:#e0f2fe;border-radius:12px;padding:15px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+        .two-columns{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+        @media (max-width:768px){.two-columns{grid-template-columns:1fr}}
+        .posts-list{max-height:500px;overflow-y:auto}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🎓 MUSCREC Official Portal</div>
+        <div><button class="btn-danger" onclick="logout()">Logout</button></div>
+    </div>
+
+    <div class="two-columns">
+        <div>
+            <div class="card">
+                <h3>📢 Post Announcement</h3>
+                <input type="text" id="postTitle" placeholder="Title">
+                <textarea id="postContent" rows="3" placeholder="Content"></textarea>
+                <select id="mediaType"><option value="document">📄 Document</option><option value="video">🎥 Video</option><option value="audio">🎵 Audio</option><option value="image">🖼️ Image</option></select>
+                <input type="file" id="mediaFile">
+                <button class="btn-success" onclick="postMuscrecAnnouncement()">Post Announcement</button>
+            </div>
+
+            <div class="card">
+                <h3>📞 Manage Contacts</h3>
+                <input type="text" id="contactName" placeholder="Name">
+                <input type="text" id="contactPosition" placeholder="Position">
+                <input type="tel" id="contactPhone" placeholder="Phone">
+                <input type="email" id="contactEmail" placeholder="Email">
+                <button class="btn-success" onclick="addContact()">Add Contact</button>
+                <div id="contactsList" style="margin-top:20px"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>💡 Student Suggestions</h3>
+            <div id="suggestionsList">Loading...</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📢 MUSCREC Announcements</h3>
+        <div id="postsList" class="posts-list">Loading...</div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        try { currentUser = JSON.parse(localStorage.getItem('muscrecUser')); if(!currentUser || currentUser.role !== 'official') window.location.href = 'muscrec-login.html'; } catch(e){ window.location.href = 'muscrec-login.html'; }
+
+        async function postMuscrecAnnouncement() {
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            const mediaType = document.getElementById('mediaType').value;
+            const file = document.getElementById('mediaFile').files[0];
+            if(!title || !content) { alert('Enter title and content'); return; }
+            const fd = new FormData();
+            fd.append('title', title); fd.append('content', content); fd.append('mediaType', mediaType);
+            if(file) fd.append('mediaFile', file);
+            const res = await fetch('/api/muscrec/posts', { method: 'POST', body: fd });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('postTitle').value = ''; document.getElementById('postContent').value = ''; document.getElementById('mediaFile').value = '';
+                loadPosts();
+                alert('Posted!');
+            } else alert('Error');
+        }
+
+        async function loadPosts() {
+            const res = await fetch('/api/muscrec/posts');
+            const posts = await res.json();
+            const container = document.getElementById('postsList');
+            if(!posts.length) { container.innerHTML = '<p>No announcements.</p>'; return; }
+            container.innerHTML = posts.map(p => `
+                <div class="post-card">
+                    <div class="post-title">📢 ${escapeHtml(p.title)}</div>
+                    <div class="post-meta">📅 ${p.date}</div>
+                    <div>${escapeHtml(p.content)}</div>
+                    ${p.media ? `<div>${renderMedia(p.media)}</div>` : ''}
+                    <button onclick="deletePost(${p.id})" style="background:#dc2626;border:none;padding:5px 12px;border-radius:8px;margin-top:10px;color:white">Delete</button>
+                </div>
+            `).join('');
+        }
+        async function deletePost(id) { if(confirm('Delete?')) { await fetch(`/api/muscrec/posts/${id}`, { method: 'DELETE' }); loadPosts(); } }
+
+        async function loadSuggestions() {
+            const res = await fetch('/api/muscrec/suggestions');
+            const suggestions = await res.json();
+            const container = document.getElementById('suggestionsList');
+            if(!suggestions.length) { container.innerHTML = '<p>No suggestions yet.</p>'; return; }
+            container.innerHTML = suggestions.map(s => `
+                <div class="suggestion-card">
+                    <div><strong>${escapeHtml(s.name)}</strong> ${s.phone ? `📞 ${escapeHtml(s.phone)}` : ''}</div>
+                    <div><strong>To:</strong> ${escapeHtml(s.to)}</div>
+                    <div>${escapeHtml(s.message)}</div>
+                    <small>${s.date}</small>
+                    <button onclick="deleteSuggestion(${s.id})" style="background:#dc2626;color:white;border:none;padding:3px 10px;border-radius:10px;margin-top:5px">Delete</button>
+                </div>
+            `).join('');
+        }
+        async function deleteSuggestion(id) { if(confirm('Delete?')) { await fetch(`/api/muscrec/suggestions/${id}`, { method: 'DELETE' }); loadSuggestions(); } }
+
+        async function loadContacts() {
+            const res = await fetch('/api/muscrec/contacts');
+            const contacts = await res.json();
+            const container = document.getElementById('contactsList');
+            if(!contacts.length) { container.innerHTML = '<p>No contacts added.</p>'; return; }
+            container.innerHTML = contacts.map(c => `
+                <div class="contact-card">
+                    <div><strong>${escapeHtml(c.name)}</strong> - ${escapeHtml(c.position)}<br>📞 ${escapeHtml(c.phone)}<br>✉️ ${escapeHtml(c.email)}</div>
+                    <button onclick="deleteContact(${c.id})" style="background:#dc2626;color:white;border:none;padding:5px 10px;border-radius:8px">Delete</button>
+                </div>
+            `).join('');
+        }
+        async function addContact() {
+            const name = document.getElementById('contactName').value.trim();
+            const position = document.getElementById('contactPosition').value.trim();
+            const phone = document.getElementById('contactPhone').value.trim();
+            const email = document.getElementById('contactEmail').value.trim();
+            if(!name || !position) { alert('Enter name and position'); return; }
+            const res = await fetch('/api/muscrec/contacts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, position, phone, email }) });
+            if(res.ok) {
+                document.getElementById('contactName').value = ''; document.getElementById('contactPosition').value = ''; document.getElementById('contactPhone').value = ''; document.getElementById('contactEmail').value = '';
+                loadContacts();
+                alert('Contact added');
+            } else alert('Error');
+        }
+        async function deleteContact(id) { if(confirm('Delete?')) { await fetch(`/api/muscrec/contacts/${id}`, { method: 'DELETE' }); loadContacts(); } }
+
+        function renderMedia(media) {
+            if(media.type === 'audio') return `<audio controls src="${media.url}"></audio>`;
+            if(media.type === 'video') return `<video controls src="${media.url}" width="100%"></video>`;
+            if(media.type === 'image') return `<img src="${media.url}" style="max-width:100%;border-radius:10px">`;
+            return `<a href="${media.url}" target="_blank">📄 Download ${media.filename}</a>`;
+        }
+        function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>]/g, m=> m==='&'?'&amp;':(m==='<'?'&lt;':'&gt;')); }
+        function logout() { localStorage.removeItem('muscrecUser'); window.location.href = 'muscrec-login.html'; }
+
+        loadPosts(); loadSuggestions(); loadContacts();
+        setInterval(loadSuggestions, 10000);
+    </script>
+</body>
+</html>
