@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostel Booking - MUSCREC</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,sans-serif}
+        body{background:#f0f4f8;padding:20px}
+        .container{max-width:600px;margin:0 auto;background:white;border-radius:20px;padding:30px;box-shadow:0 10px 30px rgba(0,0,0,0.1)}
+        h1{color:#b22222;margin-bottom:20px;border-left:4px solid #b22222;padding-left:15px}
+        label{font-weight:600;display:block;margin-top:15px;margin-bottom:5px;color:#333}
+        input,select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:14px}
+        button{background:#b22222;color:white;border:none;padding:14px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;width:100%}
+        button:hover{background:#8b0000}
+        .back-link{display:inline-block;margin-bottom:20px;color:#b22222;text-decoration:none}
+        .error{color:red;font-size:12px;margin-top:5px}
+        .required{color:#b22222}
+        .photo-preview{max-width:100px;margin-top:10px;border-radius:8px;border:1px solid #ddd;display:none}
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <a href="muscrec-student.html" class="back-link">← Back to Dashboard</a>
+        <h1>📝 Complete Your Hostel Booking</h1>
+        <form id="bookingForm">
+            <input type="hidden" id="hostelId">
+            <input type="hidden" id="hostelName">
+            <input type="hidden" id="hostelPrice">
+            <input type="hidden" id="landlordContact">
+
+            <label>Full Name <span class="required">*</span></label>
+            <input type="text" id="fullName" required>
+
+            <label>Gender <span class="required">*</span></label>
+            <select id="gender" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+            </select>
+
+            <label>Phone Number <span class="required">*</span></label>
+            <input type="tel" id="phone" required>
+
+            <label>Program of Study <span class="required">*</span></label>
+            <input type="text" id="program" placeholder="e.g., Bachelor of Education ICT" required>
+
+            <label>Registration Number (optional)</label>
+            <input type="text" id="regNumber" placeholder="e.g., 2024-ICT-001">
+
+            <label>Home Address (Town/Village) <span class="required">*</span></label>
+            <input type="text" id="homeAddress" required>
+
+            <label>Date of Arrival <span class="required">*</span></label>
+            <input type="date" id="arrivalDate" required>
+
+            <label>Profile Photo (optional)</label>
+            <input type="file" id="profilePhoto" accept="image/*" onchange="previewPhoto(this)">
+            <img id="photoPreview" class="photo-preview" alt="Preview">
+
+            <button type="button" onclick="submitBooking()">Confirm Booking & Generate PDF</button>
+        </form>
+        <div id="errorMsg" class="error" style="margin-top:10px"></div>
+    </div>
+
+    <script>
+        let photoDataUrl = null;
+        
+        function previewPhoto(input) {
+            const preview = document.getElementById('photoPreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoDataUrl = e.target.result;
+                    preview.src = photoDataUrl;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                photoDataUrl = null;
+                preview.style.display = 'none';
+            }
+        }
+        
+        // Helper to resize image (optional, ensures it fits in PDF)
+        function resizeImage(dataUrl, maxWidth, maxHeight, callback) {
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                if (height > maxHeight) {
+                    width = (width * maxHeight) / height;
+                    height = maxHeight;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = dataUrl;
+        }
+        
+        // Get hostel details from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const hostelId = urlParams.get('id');
+        const hostelName = decodeURIComponent(urlParams.get('name') || '');
+        const hostelPrice = urlParams.get('price');
+        
+        if (!hostelId) {
+            alert('No hostel selected. Redirecting...');
+            window.location.href = 'muscrec-student.html';
+        }
+        
+        document.getElementById('hostelId').value = hostelId;
+        document.getElementById('hostelName').value = hostelName;
+        document.getElementById('hostelPrice').value = hostelPrice;
+        
+        async function fetchLandlordContact() {
+            try {
+                const res = await fetch(`/api/muscrec/hostels/${hostelId}`);
+                if (res.ok) {
+                    const hostel = await res.json();
+                    document.getElementById('landlordContact').value = hostel.contacts || 'Not available';
+                } else {
+                    document.getElementById('landlordContact').value = 'Could not fetch';
+                }
+            } catch(e) {
+                document.getElementById('landlordContact').value = 'Error fetching';
+            }
+        }
+        fetchLandlordContact();
+        
+        async function submitBooking() {
+            document.getElementById('errorMsg').innerText = '';
+            
+            const fullName = document.getElementById('fullName').value.trim();
+            const gender = document.getElementById('gender').value;
+            const phone = document.getElementById('phone').value.trim();
+            const program = document.getElementById('program').value.trim();
+            const homeAddress = document.getElementById('homeAddress').value.trim();
+            const arrivalDate = document.getElementById('arrivalDate').value;
+            
+            if (!fullName || !phone || !program || !homeAddress || !arrivalDate) {
+                document.getElementById('errorMsg').innerText = 'Please fill all required fields (*)';
+                return;
+            }
+            
+            const ref = 'MZB' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 1000);
+            
+            // Store booking in backend
+            const bookingData = {
+                hostelId: parseInt(hostelId),
+                name: fullName,
+                phone: phone,
+                homeAddress: homeAddress,
+                arrivalDate: arrivalDate,
+                sex: gender,
+                program: program,
+                regNumber: document.getElementById('regNumber').value.trim(),
+                bookingRef: ref
+            };
+            try {
+                await fetch('/api/muscrec/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
+                });
+            } catch(e) { console.warn(e); }
+            
+            // Prepare data for PDF
+            const pdfData = {
+                hostelName: document.getElementById('hostelName').value,
+                price: document.getElementById('hostelPrice').value,
+                landlordContact: document.getElementById('landlordContact').value,
+                fullName, gender, phone, program,
+                regNumber: document.getElementById('regNumber').value,
+                homeAddress, arrivalDate,
+                photoDataUrl: photoDataUrl
+            };
+            
+            // Generate PDF (with photo if any)
+            generatePDF(ref, pdfData);
+        }
+        
+        function generatePDF(ref, data) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            doc.setFontSize(22);
+            doc.setTextColor(178, 34, 34);
+            doc.text('MUSCREC HOSTEL BOOKING CONFIRMATION', 20, 20);
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Booking Reference: ${ref}`, 20, 35);
+            doc.text(`Date: ${new Date().toLocaleString()}`, 20, 45);
+            
+            // Student details
+            doc.setFontSize(14);
+            doc.text('STUDENT DETAILS', 20, 65);
+            doc.setFontSize(11);
+            let y = 80;
+            doc.text(`Full Name: ${data.fullName}`, 20, y); y += 10;
+            doc.text(`Gender: ${data.gender}`, 20, y); y += 10;
+            doc.text(`Phone: ${data.phone}`, 20, y); y += 10;
+            doc.text(`Program: ${data.program}`, 20, y); y += 10;
+            if(data.regNumber) { doc.text(`Reg Number: ${data.regNumber}`, 20, y); y += 10; }
+            doc.text(`Home Address: ${data.homeAddress}`, 20, y); y += 10;
+            doc.text(`Arrival Date: ${data.arrivalDate}`, 20, y); y += 10;
+            
+            // Add profile photo if provided
+            if (data.photoDataUrl) {
+                // Use a temporary canvas to resize the image before adding to PDF
+                const img = new Image();
+                img.onload = function() {
+                    let width = 50; // desired width in PDF units
+                    let height = (img.height * width) / img.width;
+                    if (height > 60) { height = 60; width = (img.width * 60) / img.height; }
+                    try {
+                        doc.addImage(data.photoDataUrl, 'JPEG', 140, 80, width, height);
+                        // After adding image, save PDF
+                        finalizePDF(doc, ref, data);
+                    } catch(e) {
+                        console.warn('Could not add photo', e);
+                        finalizePDF(doc, ref, data);
+                    }
+                };
+                img.src = data.photoDataUrl;
+                // If image load fails, proceed without photo
+                img.onerror = function() { finalizePDF(doc, ref, data); };
+                return; // wait for image to load, then finalizePDF will be called
+            } else {
+                finalizePDF(doc, ref, data);
+            }
+        }
+        
+        function finalizePDF(doc, ref, data) {
+            let y = doc.internal.getCurrentPageInfo().pageNumber === 1 ? 190 : 80;
+            doc.setFontSize(14);
+            doc.text('HOSTEL DETAILS', 20, y);
+            y += 10;
+            doc.setFontSize(11);
+            doc.text(`Hostel: ${data.hostelName}`, 20, y); y += 10;
+            doc.text(`Monthly Price: MK ${data.price}`, 20, y); y += 10;
+            doc.text(`Landlord Contact: ${data.landlordContact}`, 20, y); y += 20;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`IMPORTANT: Pay booking fee to the landlord using the contact above.`, 20, y+10);
+            doc.text(`Quote your booking reference: ${ref}`, 20, y+20);
+            doc.text(`This is a provisional booking. Payment confirms your reservation.`, 20, y+30);
+            
+            doc.save(`booking_${ref}.pdf`);
+            alert(`Booking confirmed!\nYour reference: ${ref}\nPDF downloaded.\nContact landlord at ${data.landlordContact} to pay booking fee.`);
+            window.location.href = 'muscrec-student.html';
+        }
+    </script>
+</body>
+</html>
