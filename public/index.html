@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mzuzu University Portal</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a4a6f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:linear-gradient(135deg,#0a2b3e,#1a4a6f,#2c7da0);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
+        .container{background:white;border-radius:32px;padding:40px 30px;width:100%;max-width:550px;box-shadow:0 25px 50px rgba(0,0,0,0.3)}
+        .logo{text-align:center;margin-bottom:25px}
+        .logo h1{color:#0a2b3e;font-size:1.8rem}
+        .logo p{color:#2c7da0;font-size:0.8rem}
+        .role-tabs{display:flex;gap:10px;margin-bottom:25px;background:#f0f4f8;border-radius:60px;padding:5px}
+        .role-tab{flex:1;text-align:center;padding:12px;border-radius:40px;cursor:pointer;font-weight:bold;transition:0.2s}
+        .role-tab.active{background:#1a4a6f;color:white}
+        .form-group{margin-bottom:18px}
+        label{display:block;margin-bottom:6px;font-weight:600;color:#333;font-size:13px}
+        input,select{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:14px;font-size:14px}
+        input:focus,select:focus{outline:none;border-color:#1a4a6f}
+        button{width:100%;padding:14px;background:#1a4a6f;color:white;border:none;border-radius:14px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px}
+        button:hover{background:#0a2b3e}
+        .error{color:#dc2626;margin-top:12px;text-align:center;font-size:13px}
+        .hint{font-size:11px;color:#666;margin-top:-8px;margin-bottom:10px;text-align:left}
+        .program-list{max-height:200px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:14px;margin-top:5px;background:white}
+        .program-item{padding:12px;cursor:pointer;border-bottom:1px solid #eee}
+        .program-item:hover{background:#e0f2fe}
+        .program-code{font-size:10px;color:#666;margin-top:3px}
+        .selected-program{background:#e0f2fe;padding:12px;border-radius:14px;margin-top:10px;font-size:13px}
+        .demo-box{background:#f8f9fa;border-radius:16px;padding:15px;margin-top:20px;font-size:12px;text-align:left;border-left:4px solid #1a4a6f}
+        .demo-box h4{color:#0a2b3e;margin-bottom:8px;font-size:14px}
+        .contact{background:#fff3cd;border-radius:12px;padding:12px;margin-top:15px;font-size:11px;color:#856404;text-align:center}
+        .search-box{margin-bottom:10px}
+        .search-box input{padding:10px;font-size:13px}
+        .muscrec-btn{background:#dc2626;color:white;border:none;padding:12px 25px;border-radius:40px;font-weight:bold;cursor:pointer;width:auto;margin-top:20px;transition:0.2s}
+        .muscrec-btn:hover{background:#b91c1c}
+        .btn-red{background:#dc2626;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1> Mzuzu University</h1>
+            <p>Student - Lecturer Portal</p>
+            <p style="font-size:10px">All 50+ Programs • 8 Faculties</p>
+        </div>
+
+        <div class="role-tabs">
+            <div class="role-tab active" id="lecturerTab">👨‍🏫 Lecturer</div>
+            <div class="role-tab" id="studentTab">👩‍🎓 Student</div>
+        </div>
+
+        <form id="loginForm" onsubmit="return false;">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter username" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password">
+            </div>
+            <div id="passwordHint" class="hint"></div>
+
+            <div id="programSection" style="display: none;">
+                <label>Search Program of Study</label>
+                <div class="search-box">
+                    <input type="text" id="programSearch" placeholder="Type to search...">
+                </div>
+                <div id="programList" class="program-list"></div>
+                <div id="selectedProgram" class="selected-program" style="display: none;"></div>
+                <input type="hidden" id="programCode">
+            </div>
+
+            <div class="form-group">
+                <label>Year Level</label>
+                <select id="level">
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                </select>
+            </div>
+
+            <button type="button" id="loginBtn">Login →</button>
+            <div id="errorMsg" class="error"></div>
+        </form>
+
+        <div class="demo-box">
+            <h4>📋 Demo Access</h4>
+            <strong>👩‍🎓 Student:</strong> student_BED_ICT_l1_1 / student123<br>
+            <span style="font-size:10px">For other programs, replace BED_ICT with program code (e.g., BSC_ICT, BSC_NURSING, BA_COMMS)</span>
+        </div>
+
+        <!-- RED MUSCREC BUTTON -->
+        <div style="text-align:center;">
+            <button class="muscrec-btn" id="muscrecBtn">🔴 MUSCREC Services</button>
+        </div>
+
+        <div class="contact">
+            📞 <strong>For Queries:</strong> Emmanuel Chimombo 0891011842 | e8477633@gmail.com<br>
+            ⚠️ Queries beyond mechanical errors must be directed to your Head of Department
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const lecturerTab = document.getElementById('lecturerTab');
+        const studentTab = document.getElementById('studentTab');
+        const loginBtn = document.getElementById('loginBtn');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const levelSelect = document.getElementById('level');
+        const programCodeInput = document.getElementById('programCode');
+        const programSection = document.getElementById('programSection');
+        const programSearch = document.getElementById('programSearch');
+        const programListDiv = document.getElementById('programList');
+        const selectedProgramDiv = document.getElementById('selectedProgram');
+        const passwordHint = document.getElementById('passwordHint');
+        const errorMsg = document.getElementById('errorMsg');
+        const muscrecBtn = document.getElementById('muscrecBtn');
+
+        let currentRole = 'lecturer';
+        let allPrograms = [];
+
+        // ---------- Helper functions ----------
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
+        }
+
+        function displayPrograms(programs) {
+            if (!programs.length) {
+                programListDiv.innerHTML = '<div class="program-item">No programs found</div>';
+                return;
+            }
+            programListDiv.innerHTML = programs.map(p => `
+                <div class="program-item" onclick="selectProgram('${p.code}', '${escapeHtml(p.name)}')">
+                    <strong>${escapeHtml(p.name)}</strong>
+                    <div class="program-code">Code: ${p.code} | Faculty: ${p.faculty}</div>
+                </div>
+            `).join('');
+        }
+
+        function filterPrograms() {
+            const search = programSearch.value.toLowerCase();
+            const filtered = allPrograms.filter(p =>
+                p.name.toLowerCase().includes(search) || p.code.toLowerCase().includes(search)
+            );
+            displayPrograms(filtered);
+        }
+
+        function selectProgram(code, name) {
+            programCodeInput.value = code;
+            selectedProgramDiv.innerHTML = `✅ Selected: ${escapeHtml(name)} (${code})`;
+            selectedProgramDiv.style.display = 'block';
+            programListDiv.style.display = 'none';
+        }
+
+        function setRole(role) {
+            currentRole = role;
+            if (role === 'lecturer') {
+                lecturerTab.classList.add('active');
+                studentTab.classList.remove('active');
+                usernameInput.placeholder = 'e.g., lecturer_BED_ICT_l1';
+                passwordHint.innerHTML = '🔒 Lecturer password: lecturer123';
+                programSection.style.display = 'none';
+                // Clear program selection for lecturer (optional)
+                programCodeInput.value = '';
+                selectedProgramDiv.style.display = 'none';
+            } else {
+                studentTab.classList.add('active');
+                lecturerTab.classList.remove('active');
+                usernameInput.placeholder = 'e.g., student_BED_ICT_l1_1';
+                passwordHint.innerHTML = '🔓 Student Password: student123';
+                programSection.style.display = 'block';
+                // Refresh program list
+                if (allPrograms.length) displayPrograms(allPrograms);
+                programListDiv.style.display = 'block';
+                selectedProgramDiv.style.display = 'none';
+                programSearch.value = '';
+                programCodeInput.value = '';
+            }
+            errorMsg.innerHTML = '';
+        }
+
+        // ---------- Load programs from server ----------
+        async function loadPrograms() {
+            try {
+                const res = await fetch('/api/programs');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                allPrograms = await res.json();
+                console.log('Programs loaded:', allPrograms.length);
+                if (currentRole === 'student') {
+                    displayPrograms(allPrograms);
+                }
+            } catch (e) {
+                console.error(e);
+                programListDiv.innerHTML = '<div class="program-item">Error loading programs</div>';
+            }
+        }
+
+        // ---------- Login logic ----------
+        async function login() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const level = levelSelect.value;
+            let programCode = programCodeInput.value;
+
+            if (!username || !password) {
+                errorMsg.innerHTML = 'Please enter username and password';
+                return;
+            }
+
+            if (currentRole === 'lecturer') {
+                // For lecturer, if programCode not selected, try to extract from username (format lecturer_CODE_lX)
+                if (!programCode && username.match(/lecturer_([A-Z_]+)_l\d/)) {
+                    programCode = username.match(/lecturer_([A-Z_]+)_l\d/)[1];
+                }
+                if (!programCode) {
+                    errorMsg.innerHTML = 'Invalid username format. Use lecturer_PROGRAMCODE_l1';
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/lecturer/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password, programCode, level })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        localStorage.setItem('currentUser', JSON.stringify(data));
+                        window.location.href = 'lecturer-dashboard.html';
+                    } else {
+                        errorMsg.innerHTML = data.error || 'Invalid credentials';
+                    }
+                } catch (e) {
+                    errorMsg.innerHTML = 'Connection error';
+                }
+            } else {
+                // Student login
+                if (!programCode) {
+                    errorMsg.innerHTML = 'Please select your program of study';
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/student/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password, programCode, level })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        localStorage.setItem('currentUser', JSON.stringify(data));
+                        window.location.href = 'student-dashboard.html';
+                    } else {
+                        errorMsg.innerHTML = data.error || 'Invalid credentials';
+                    }
+                } catch (e) {
+                    errorMsg.innerHTML = 'Connection error';
+                }
+            }
+        }
+
+        // ---------- Event listeners ----------
+        lecturerTab.addEventListener('click', () => setRole('lecturer'));
+        studentTab.addEventListener('click', () => setRole('student'));
+        loginBtn.addEventListener('click', login);
+        muscrecBtn.addEventListener('click', () => {
+            window.location.href = 'muscrec-login.html';
+        });
+        programSearch.addEventListener('input', filterPrograms);
+
+        // Also allow pressing Enter in the form to trigger login
+        document.getElementById('loginForm').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+
+        // Initialize
+        loadPrograms();
+        setRole('lecturer'); // default active
+    </script>
+</body>
+</html>
